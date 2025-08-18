@@ -45,15 +45,27 @@ const CameraCapture = {
           placeholder.innerHTML = "";
           placeholder.appendChild(this.video);
           placeholder.classList.remove("bg-zinc-100");
-          placeholder.classList.add("bg-black");
+          placeholder.classList.add("bg-black", "relative", "z-0");
+
+          // Ensure the video doesn't overflow its container
+          this.video.style.width = "100%";
+          this.video.style.height = "100%";
+          this.video.style.objectFit = "cover";
         }
 
-        // Update the capture button to actually capture
-        const captureBtn = document.querySelector(
-          '[phx-click="photo-captured"]'
-        );
-        if (captureBtn) {
-          captureBtn.onclick = () => this.capturePhoto();
+        // Store reference to capture button for later use
+        this.captureBtn = document.querySelector("#capture-photo-btn");
+        console.log("Looking for capture button:", this.captureBtn);
+        if (this.captureBtn) {
+          console.log("Found capture button, setting up click handler");
+          this.captureBtn.addEventListener("click", (e) => {
+            console.log("Capture button clicked!");
+            e.preventDefault();
+            this.capturePhoto();
+          });
+          console.log("Click handler set up successfully");
+        } else {
+          console.log("Capture button not found!");
         }
       });
     } catch (error) {
@@ -63,7 +75,11 @@ const CameraCapture = {
   },
 
   capturePhoto() {
-    if (!this.video || !this.canvas) return;
+    console.log("capturePhoto called");
+    if (!this.video || !this.canvas) {
+      console.log("Video or canvas not available");
+      return;
+    }
 
     const ctx = this.canvas.getContext("2d");
 

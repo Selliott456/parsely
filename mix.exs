@@ -54,7 +54,8 @@ defmodule Parsely.MixProject do
       {:oban, "~> 2.17"},
       {:argon2_elixir, "~> 4.0"},
       {:nimble_totp, "~> 1.0"},
-      {:ex_aws_s3, "~> 2.5"}
+      {:ex_aws_s3, "~> 2.5"},
+      {:httpoison, "~> 2.0"}
     ]
   end
 

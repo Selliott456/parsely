@@ -3,6 +3,8 @@ defmodule ParselyWeb.DashboardLive do
 
   alias Parsely.BusinessCards
   alias Parsely.BusinessCards.BusinessCard
+  alias Parsely.OCRService
+  alias Parsely.ImageService
 
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
@@ -30,31 +32,49 @@ defmodule ParselyWeb.DashboardLive do
      |> push_event("scan-card", %{})}
   end
 
-  def handle_event("photo-captured", %{"data" => photo_data}, socket) do
-    # Here you would typically:
-    # 1. Upload the photo to S3
-    # 2. Send it to OCR service
-    # 3. Extract the data
+    def handle_event("photo-captured", %{"data" => photo_data}, socket) do
+    IO.puts("photo-captured event: starting image save + OCR")
 
-    # For now, we'll simulate OCR results
-    ocr_results = %{
-      "name" => "John Doe",
-      "email" => "john.doe@example.com",
-      "phone" => "+1 (555) 123-4567",
-      "company" => "Example Corp",
-      "position" => "Software Engineer"
-    }
+    # Immediately switch UI to form/preview while processing
+    socket =
+      socket
+      |> assign(:photo_data, photo_data)
+      |> assign(:show_camera, false)
 
-    changeset =
-      socket.assigns.form.source
-      |> BusinessCards.change_business_card(ocr_results)
-      |> Map.put(:action, :validate)
+    IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}")
 
-    {:noreply,
-     socket
-     |> assign(:photo_data, photo_data)
-     |> assign(:show_camera, false)
-     |> assign(:form, to_form(changeset))}
+    # Send immediate UI update to show photo preview
+    # Then process OCR asynchronously
+    Process.send_after(self(), {:process_ocr, photo_data}, 100)
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:process_ocr, photo_data}, socket) do
+    # Process OCR asynchronously
+    case ImageService.upload_image(photo_data, "business_card.jpg") do
+      {:ok, image_url} ->
+        # Then process the image with OCR
+        {:ok, ocr_results} = OCRService.extract_business_card_info(photo_data)
+
+        # Add the image URL to the OCR results
+        ocr_results = Map.put(ocr_results, :image_url, image_url)
+
+        changeset =
+          %BusinessCard{}
+          |> BusinessCards.change_business_card(ocr_results)
+
+        IO.puts("Form populated with OCR results: #{inspect(changeset.changes)}")
+
+        {:noreply,
+         socket
+         |> assign(:form, to_form(changeset))}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to save image: #{reason}")}
+    end
   end
 
   def handle_event("retake-photo", _params, socket) do
@@ -68,7 +88,6 @@ defmodule ParselyWeb.DashboardLive do
     changeset =
       %BusinessCard{}
       |> BusinessCards.change_business_card(business_card_params)
-      |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, form: to_form(changeset))}
   end
@@ -110,11 +129,11 @@ defmodule ParselyWeb.DashboardLive do
               </div>
             </div>
 
-            <div class="space-y-4">
+            <div class="space-y-4 relative z-10">
               <button
                 type="button"
-                phx-click="photo-captured"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                id="capture-photo-btn"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 relative z-10"
               >
                 <.icon name="hero-camera" class="h-4 w-4 mr-2" />
                 Capture Photo
@@ -123,7 +142,7 @@ defmodule ParselyWeb.DashboardLive do
               <button
                 type="button"
                 phx-click="retake-photo"
-                class="inline-flex items-center px-4 py-2 border border-zinc-300 text-sm font-medium rounded-md text-zinc-700 bg-white hover:bg-zinc-50"
+                class="inline-flex items-center px-4 py-2 border border-zinc-300 text-sm font-medium rounded-md text-zinc-700 bg-white hover:bg-zinc-50 relative z-10"
               >
                 <.icon name="hero-arrow-left" class="h-4 w-4 mr-2" />
                 Back
