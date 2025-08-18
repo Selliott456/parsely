@@ -23,13 +23,14 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import PhotoCapture from "./hooks/photo_capture";
 import PasswordStrength from "./hooks/password_strength";
+import CameraCapture from "./hooks/camera_capture";
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
-  hooks: { PhotoCapture, PasswordStrength },
+  hooks: { PhotoCapture, PasswordStrength, CameraCapture },
 });
 
 // Show progress bar on live navigation and form submits

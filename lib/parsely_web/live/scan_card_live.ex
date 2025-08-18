@@ -1,33 +1,21 @@
-defmodule ParselyWeb.DashboardLive do
+defmodule ParselyWeb.ScanCardLive do
   use ParselyWeb, :live_view
 
   alias Parsely.BusinessCards
   alias Parsely.BusinessCards.BusinessCard
 
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_user
-    business_cards = BusinessCards.list_business_cards(user.id)
-
     {:ok,
      assign(socket,
-       business_cards: business_cards,
-       page_title: "Dashboard",
-       show_camera: false,
+       page_title: "Scan Business Card",
        photo_data: nil,
+       is_capturing: false,
        form: to_form(BusinessCards.change_business_card(%BusinessCard{}))
      )}
   end
 
-  def handle_event("add-manually", _params, socket) do
-    {:noreply, push_navigate(socket, to: ~p"/manual-entry")}
-  end
-
-  def handle_event("scan-card", _params, socket) do
-    IO.puts("Scan card event received in LiveView")
-    {:noreply,
-     socket
-     |> assign(show_camera: true)
-     |> push_event("scan-card", %{})}
+  def handle_event("start-camera", _params, socket) do
+    {:noreply, assign(socket, is_capturing: true)}
   end
 
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
@@ -53,7 +41,7 @@ defmodule ParselyWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(:photo_data, photo_data)
-     |> assign(:show_camera, false)
+     |> assign(:is_capturing, false)
      |> assign(:form, to_form(changeset))}
   end
 
@@ -61,7 +49,7 @@ defmodule ParselyWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(:photo_data, nil)
-     |> assign(:show_camera, true)}
+     |> assign(:is_capturing, true)}
   end
 
   def handle_event("validate", %{"business_card" => business_card_params}, socket) do
@@ -79,27 +67,27 @@ defmodule ParselyWeb.DashboardLive do
 
     case BusinessCards.create_business_card(business_card_params) do
       {:ok, _business_card} ->
-        business_cards = BusinessCards.list_business_cards(user.id)
-
         {:noreply,
          socket
          |> put_flash(:info, "Business card created successfully")
-         |> assign(business_cards: business_cards, photo_data: nil, show_camera: false)}
+         |> push_navigate(to: ~p"/business-cards")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
-
-
   def render(assigns) do
     ~H"""
-    <div id="dashboard" class="mx-auto max-w-7xl" phx-hook="CameraCapture">
+    <div class="mx-auto max-w-2xl">
+      <.header>
+        Scan Business Card
+        <:subtitle>Take a photo of the business card to extract information</:subtitle>
+      </.header>
 
-      <%= if @show_camera do %>
+            <%= if @is_capturing do %>
         <!-- Camera Capture Interface -->
-        <div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
+        <div id="camera-capture" class="bg-white rounded-lg border border-zinc-200 p-6" phx-hook="CameraCapture">
           <div class="text-center">
             <div class="mx-auto h-64 w-full bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
               <div class="text-center">
@@ -134,7 +122,7 @@ defmodule ParselyWeb.DashboardLive do
       <% else %>
         <%= if @photo_data do %>
           <!-- Photo Preview and Form -->
-          <div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
+          <div class="bg-white rounded-lg border border-zinc-200 p-6">
             <div class="text-center mb-6">
               <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
               <div class="mt-4">
@@ -162,45 +150,32 @@ defmodule ParselyWeb.DashboardLive do
 
               <:actions>
                 <.button phx-disable-with="Saving...">Save Business Card</.button>
-                <button
-                  type="button"
-                  phx-click="retake-photo"
-                  class="button button-outline"
-                >
-                  Retake Photo
-                </button>
+                <.link navigate={~p"/business-cards"} class="button">
+                  Cancel
+                </.link>
               </:actions>
             </.simple_form>
           </div>
         <% else %>
-          <!-- Quick Actions Section -->
-          <div class="mb-8">
-            <div class="flex space-x-4">
-              <!-- Scan Business Card -->
-              <button
-                phx-click="scan-card"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <.icon name="hero-camera" class="h-4 w-4 mr-2" />
-                Scan Business Card
-              </button>
-
-              <!-- Add Manually -->
-              <button
-                phx-click="add-manually"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <.icon name="hero-pencil-square" class="h-4 w-4 mr-2" />
-                Add Manually
-              </button>
+          <!-- Start Camera Button -->
+          <div class="bg-white rounded-lg border border-zinc-200 p-8 text-center">
+            <div class="mx-auto h-16 w-16 text-zinc-400 mb-4">
+              <.icon name="hero-camera" class="h-16 w-16" />
             </div>
+            <h3 class="text-lg font-medium text-zinc-900 mb-2">Ready to scan?</h3>
+            <p class="text-zinc-600 mb-6">
+              Click the button below to open your camera and capture the business card.
+            </p>
+            <button
+              phx-click="start-camera"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <.icon name="hero-camera" class="h-4 w-4 mr-2" />
+              Start Camera
+            </button>
           </div>
         <% end %>
       <% end %>
-
-
-
-
     </div>
     """
   end

@@ -75,6 +75,7 @@ defmodule ParselyWeb.Router do
       live "/business-cards/:id", BusinessCardLive, :show
       live "/business-cards/:id/edit", BusinessCardLive, :edit
       live "/manual-entry", ManualEntryLive, :new
+      live "/scan-card", ScanCardLive, :new
     end
   end
 
