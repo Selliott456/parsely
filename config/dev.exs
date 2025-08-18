@@ -56,9 +56,12 @@ config :parsely, ParselyWeb.Endpoint,
 config :parsely, ParselyWeb.Endpoint,
   live_reload: [
     patterns: [
-      ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
+      ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
       ~r"lib/parsely_web/(controllers|live|components)/.*(ex|heex)$"
+    ],
+    ignore: [
+      ~r"priv/static/uploads/.*"
     ]
   ]
 
