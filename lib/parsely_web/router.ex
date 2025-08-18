@@ -66,6 +66,7 @@ defmodule ParselyWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{ParselyWeb.UserAuth, :ensure_authenticated}] do
+      live "/dashboard", DashboardLive, :index
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
       live "/2fa/challenge", TwoFactorAuthLive, :challenge
@@ -73,6 +74,7 @@ defmodule ParselyWeb.Router do
       live "/business-cards/new", BusinessCardLive, :new
       live "/business-cards/:id", BusinessCardLive, :show
       live "/business-cards/:id/edit", BusinessCardLive, :edit
+      live "/manual-entry", ManualEntryLive, :new
     end
   end
 

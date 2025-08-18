@@ -21,48 +21,50 @@ defmodule ParselyWeb.BusinessCardFormComponent do
         class="space-y-6"
       >
         <div class="space-y-4">
-          <!-- Photo Capture Section -->
-          <div class="border-2 border-dashed border-zinc-300 rounded-lg p-6">
-            <div class="text-center">
-              <div class="mx-auto h-12 w-12 text-zinc-400">
-                <.icon name="hero-camera" class="h-12 w-12" />
-              </div>
-              <div class="mt-4">
-                <label for="photo-upload" class="cursor-pointer">
-                  <span class="mt-2 block text-sm font-semibold text-zinc-900">
-                    Take a photo of the business card
-                  </span>
-                  <span class="mt-1 block text-sm text-zinc-500">
-                    Click to capture or drag and drop
-                  </span>
-                </label>
-                <input
-                  id="photo-upload"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  phx-hook="PhotoCapture"
-                  class="sr-only"
-                />
-              </div>
-            </div>
-
-            <%= if @photo_data do %>
-              <div class="mt-4">
-                <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
-                <div class="mt-2 text-center">
-                  <button
-                    type="button"
-                    phx-click="retake-photo"
-                    phx-target={@myself}
-                    class="text-sm text-zinc-600 hover:text-zinc-900"
-                  >
-                    Retake Photo
-                  </button>
+          <%= if @method == "camera" do %>
+            <!-- Photo Capture Section -->
+            <div class="border-2 border-dashed border-zinc-300 rounded-lg p-6">
+              <div class="text-center">
+                <div class="mx-auto h-12 w-12 text-zinc-400">
+                  <.icon name="hero-camera" class="h-12 w-12" />
+                </div>
+                <div class="mt-4">
+                  <label for="photo-upload" class="cursor-pointer">
+                    <span class="mt-2 block text-sm font-semibold text-zinc-900">
+                      Take a photo of the business card
+                    </span>
+                    <span class="mt-1 block text-sm text-zinc-500">
+                      Click to capture or drag and drop
+                    </span>
+                  </label>
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    phx-hook="PhotoCapture"
+                    class="sr-only"
+                  />
                 </div>
               </div>
-            <% end %>
-          </div>
+
+              <%= if @photo_data do %>
+                <div class="mt-4">
+                  <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
+                  <div class="mt-2 text-center">
+                    <button
+                      type="button"
+                      phx-click="retake-photo"
+                      phx-target={@myself}
+                      class="text-sm text-zinc-600 hover:text-zinc-900"
+                    >
+                      Retake Photo
+                    </button>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
 
           <!-- OCR Results Section -->
           <%= if @ocr_results do %>

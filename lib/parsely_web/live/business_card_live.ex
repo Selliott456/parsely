@@ -11,7 +11,9 @@ defmodule ParselyWeb.BusinessCardLive do
     {:ok,
      assign(socket,
        business_cards: business_cards,
-       page_title: "Business Cards"
+       page_title: "Business Cards",
+       show_form: false,
+       show_details: false
      )}
   end
 
@@ -27,12 +29,16 @@ defmodule ParselyWeb.BusinessCardLive do
      )}
   end
 
-  def handle_params(%{"action" => "new"}, _url, socket) do
+  def handle_params(%{"action" => "new"} = params, _url, socket) do
+    method = Map.get(params, "method", "camera")
+
     {:noreply,
      socket
      |> assign(:page_title, "New Business Card")
      |> assign(:business_card, nil)
-     |> assign(:show_form, true)}
+     |> assign(:show_form, true)
+     |> assign(:show_details, false)
+     |> assign(:method, method)}
   end
 
   def handle_params(_params, _url, socket) do
@@ -126,6 +132,7 @@ defmodule ParselyWeb.BusinessCardLive do
         action={:new}
         patch={~p"/business-cards"}
         current_user={@current_user}
+        method={@method}
       />
     <% else %>
       <%= if @show_details and @business_card do %>

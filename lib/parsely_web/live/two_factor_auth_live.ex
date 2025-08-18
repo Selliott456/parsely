@@ -32,8 +32,8 @@ defmodule ParselyWeb.TwoFactorAuthLive do
       # Create trusted device record
               case Accounts.create_trusted_device(user, token, socket.assigns.conn) do
           {:ok, _device} ->
-            # Redirect to business cards
-            {:noreply, redirect(socket, to: ~p"/business-cards")}
+            # Redirect to dashboard
+            {:noreply, redirect(socket, to: ~p"/dashboard")}
 
         {:error, _changeset} ->
           {:noreply, assign(socket, error_message: "Failed to create trusted device")}
