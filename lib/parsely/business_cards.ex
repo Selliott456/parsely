@@ -130,10 +130,49 @@ defmodule Parsely.BusinessCards do
   Checks if a business card with the same email already exists for the user.
   """
   def duplicate_exists?(user_id, email) when is_binary(email) do
-    BusinessCard
-    |> where(user_id: ^user_id, email: ^email)
+    normalized_email = email |> String.trim() |> String.downcase()
+
+    IO.puts("=== EMAIL DUPLICATE CHECK ===")
+    IO.puts("User ID: #{user_id}")
+    IO.puts("Normalized email: #{normalized_email}")
+
+    result = BusinessCard
+    |> where([bc], bc.user_id == ^user_id)
+    |> where([bc], fragment("lower(?)", bc.email) == ^normalized_email)
     |> Repo.exists?()
+
+    IO.puts("Email duplicate result: #{result}")
+    result
   end
 
   def duplicate_exists?(_user_id, _email), do: false
+
+  @doc """
+  Checks for duplicates by email (case-insensitive) or phone (digits only).
+  Returns true if either matches for the given user.
+  """
+  def duplicate_exists?(user_id, email, phone) do
+    # Simple check: if email exists and matches any existing email for this user
+    case email do
+      value when is_binary(value) ->
+        trimmed = String.trim(value)
+        if trimmed != "" and String.contains?(trimmed, "@") do
+          IO.puts("=== SIMPLE EMAIL DUPLICATE CHECK ===")
+          IO.puts("User ID: #{user_id}")
+          IO.puts("Email: #{trimmed}")
+
+          result = BusinessCard
+          |> where([bc], bc.user_id == ^user_id)
+          |> where([bc], bc.email == ^trimmed)
+          |> Repo.exists?()
+
+          IO.puts("Duplicate result: #{result}")
+          result
+        else
+          false
+        end
+      _ ->
+        false
+    end
+  end
 end

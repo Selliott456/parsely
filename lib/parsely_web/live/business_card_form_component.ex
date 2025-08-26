@@ -183,17 +183,26 @@ defmodule ParselyWeb.BusinessCardFormComponent do
     user = socket.assigns.current_user
     business_card_params = Map.put(business_card_params, "user_id", user.id)
 
-    case BusinessCards.create_business_card(business_card_params) do
-      {:ok, business_card} ->
-        notify_parent({:saved, business_card})
+    # Check for duplicates before creating
+    email = Map.get(business_card_params, "email")
+    if email && BusinessCards.duplicate_exists?(user.id, email) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "A business card with this email already exists")
+       |> assign_form(BusinessCards.change_business_card(business_card_params))}
+    else
+      case BusinessCards.create_business_card(business_card_params) do
+        {:ok, business_card} ->
+          notify_parent({:saved, business_card})
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Business card created successfully")
-         |> push_patch(to: socket.assigns.patch)}
+          {:noreply,
+           socket
+           |> put_flash(:info, "Business card created successfully")
+           |> push_patch(to: socket.assigns.patch)}
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign_form(socket, changeset)}
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {:noreply, assign_form(socket, changeset)}
+      end
     end
   end
 

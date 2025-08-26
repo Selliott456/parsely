@@ -25,15 +25,24 @@ defmodule ParselyWeb.ManualEntryLive do
     user = socket.assigns.current_user
     business_card_params = Map.put(business_card_params, "user_id", user.id)
 
-    case BusinessCards.create_business_card(business_card_params) do
-      {:ok, _business_card} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Business card created successfully")
-         |> push_navigate(to: ~p"/business-cards")}
+    # Check for duplicates before creating
+    email = Map.get(business_card_params, "email")
+    if email && BusinessCards.duplicate_exists?(user.id, email) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "A business card with this email already exists")
+       |> assign(form: to_form(BusinessCards.change_business_card(business_card_params)))}
+    else
+      case BusinessCards.create_business_card(business_card_params) do
+              {:ok, _business_card} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, "Business card created successfully")
+           |> push_navigate(to: ~p"/business-cards")}
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {:noreply, assign(socket, form: to_form(changeset))}
+      end
     end
   end
 

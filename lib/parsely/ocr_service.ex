@@ -33,6 +33,7 @@ defmodule Parsely.OCRService do
         IO.puts("=== OCR SERVICE: OCR API failed, using fallback mock data ===")
         IO.puts("Error: #{reason}")
         # Fallback to mock data for testing
+        IO.puts("=== OCR SERVICE: Using fallback mock data ===")
         {:ok, """
         John Doe
         Software Engineer
@@ -61,7 +62,9 @@ defmodule Parsely.OCRService do
 
     IO.puts("=== OCR SERVICE: Calling OCR.space API ===")
 
-    case HTTPoison.post(url, body, headers) do
+    IO.puts("=== OCR SERVICE: Making HTTP request to OCR.space ===")
+
+    case HTTPoison.post(url, body, headers, [timeout: 30000, recv_timeout: 30000]) do
       {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
         IO.puts("=== OCR SERVICE: OCR.space API response ===")
         IO.puts(response_body)
@@ -72,6 +75,8 @@ defmodule Parsely.OCRService do
           {:ok, %{"ParsedResults" => []}} ->
             {:error, "No text found in image"}
           {:ok, %{"ErrorMessage" => error}} ->
+            IO.puts("=== OCR SERVICE: OCR API returned error ===")
+            IO.puts("Error message: #{error}")
             {:error, "OCR API error: #{error}"}
           {:error, _} ->
             {:error, "Failed to parse OCR API response"}
@@ -81,6 +86,8 @@ defmodule Parsely.OCRService do
         {:error, "OCR API returned status code: #{status_code}"}
 
       {:error, %HTTPoison.Error{reason: reason}} ->
+        IO.puts("=== OCR SERVICE: HTTP request failed ===")
+        IO.puts("Error reason: #{reason}")
         {:error, "HTTP request failed: #{reason}"}
     end
   end
@@ -120,16 +127,31 @@ defmodule Parsely.OCRService do
   end
 
   defp find_email(text) do
-    # Simple email pattern - anything with @ symbol
-    case Regex.run(~r/\S+@\S+/, text) do
-      [email | _] ->
-        # Clean up the email
-        email
-        |> String.replace(~r/\s+/, "")
-        |> String.replace("[at]", "@")
-        |> String.replace("[dot]", ".")
-      nil -> nil
-    end
+    IO.puts("=== FINDING EMAIL ===")
+    IO.puts("Text: #{text}")
+
+    # More comprehensive email patterns
+    email_patterns = [
+      ~r/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, # Standard email
+      ~r/\S+@\S+/, # Simple pattern - anything with @ symbol
+      ~r/[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\s*\.\s*[A-Z|a-z]{2,}/, # Email with spaces
+    ]
+
+    Enum.find_value(email_patterns, fn pattern ->
+      case Regex.run(pattern, text) do
+        [email | _] ->
+          # Clean up the email
+          cleaned_email = email
+          |> String.replace(~r/\s+/, "")
+          |> String.replace("[at]", "@")
+          |> String.replace("[dot]", ".")
+          |> String.trim()
+
+          IO.puts("Found email: #{cleaned_email}")
+          cleaned_email
+        nil -> nil
+      end
+    end) || (IO.puts("No email found") && nil)
   end
 
   defp find_phone(text) do

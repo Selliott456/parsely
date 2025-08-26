@@ -11,6 +11,7 @@ defmodule ParselyWeb.ScanCardLive do
       page_title: "Scan Business Card",
       show_camera: true,
       photo_data: nil,
+      duplicate_error: nil,
       form: to_form(BusinessCards.change_business_card(%BusinessCard{}))
     )
 
@@ -20,11 +21,11 @@ defmodule ParselyWeb.ScanCardLive do
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
     IO.puts("photo-captured event: starting image save + OCR")
 
-    # Keep camera visible and add photo data for form
+    # Hide camera and add photo data for form
     socket =
       socket
       |> assign(:photo_data, photo_data)
-      |> assign(:show_camera, true)
+      |> assign(:show_camera, false)
 
     IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}")
 
@@ -51,6 +52,7 @@ defmodule ParselyWeb.ScanCardLive do
         # Add the image URL to the OCR results
         ocr_results = Map.put(ocr_results, :image_url, image_url)
 
+        # Always populate form with OCR results
         changeset =
           %BusinessCard{}
           |> BusinessCards.change_business_card(ocr_results)
@@ -77,8 +79,11 @@ defmodule ParselyWeb.ScanCardLive do
   def handle_event("retake-photo", _params, socket) do
     {:noreply,
      socket
-     |> assign(:photo_data, nil)
-     |> assign(:show_camera, true)}
+     |> push_navigate(to: ~p"/scan-card", replace: true)}
+  end
+
+  def handle_event("clear-duplicate-error", _params, socket) do
+    {:noreply, assign(socket, :duplicate_error, nil)}
   end
 
   def handle_event("validate", %{"business_card" => business_card_params}, socket) do
@@ -93,29 +98,41 @@ defmodule ParselyWeb.ScanCardLive do
     user = socket.assigns.current_user
     business_card_params = Map.put(business_card_params, "user_id", user.id)
 
-    # Handle notes field - if notes are provided, format them into JSON structure
-    business_card_params = case Map.get(business_card_params, "notes") do
-      notes when is_binary(notes) and byte_size(notes) > 0 ->
-        # Format notes as JSON array with timestamp
-        formatted_notes = [%{
-          "note" => notes,
-          "date" => DateTime.utc_now() |> DateTime.to_iso8601()
-        }]
-        Map.put(business_card_params, "notes", formatted_notes)
-      _ ->
-        # No notes provided, set empty array
-        Map.put(business_card_params, "notes", [])
-    end
+    # Check for duplicates before creating
+    email = Map.get(business_card_params, "email")
+    phone = Map.get(business_card_params, "phone")
 
-    case BusinessCards.create_business_card(business_card_params) do
-      {:ok, _business_card} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Business card created successfully")
-         |> push_navigate(to: ~p"/dashboard")}
+    if BusinessCards.duplicate_exists?(user.id, email, phone) do
+      # Duplicate found - show error and don't save
+      {:noreply,
+       socket
+       |> assign(:duplicate_error, email)
+       |> put_flash(:error, "A business card with this email already exists")}
+    else
+      # Handle notes field - if notes are provided, format them into JSON structure
+      business_card_params = case Map.get(business_card_params, "notes") do
+        notes when is_binary(notes) and byte_size(notes) > 0 ->
+          # Format notes as JSON array with timestamp
+          formatted_notes = [%{
+            "note" => notes,
+            "date" => DateTime.utc_now() |> DateTime.to_iso8601()
+          }]
+          Map.put(business_card_params, "notes", formatted_notes)
+        _ ->
+          # No notes provided, set empty array
+          Map.put(business_card_params, "notes", [])
+      end
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+      case BusinessCards.create_business_card(business_card_params) do
+        {:ok, _business_card} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, "Business card created successfully")
+           |> push_navigate(to: ~p"/dashboard")}
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {:noreply, assign(socket, form: to_form(changeset))}
+      end
     end
   end
 
@@ -169,7 +186,7 @@ defmodule ParselyWeb.ScanCardLive do
       <% end %>
 
       <%= if @photo_data do %>
-        <!-- Photo Preview -->
+        <!-- Photo Preview Area -->
         <div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
           <div class="text-center mb-6">
             <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
@@ -185,6 +202,8 @@ defmodule ParselyWeb.ScanCardLive do
           </div>
         </div>
       <% end %>
+
+
 
       <!-- Form - Always Visible -->
       <div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
@@ -202,7 +221,13 @@ defmodule ParselyWeb.ScanCardLive do
           <.input field={@form[:notes]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
 
           <:actions>
-            <.button phx-disable-with="Saving...">Save Business Card</.button>
+            <button
+              type="submit"
+              class={"px-4 py-2 text-sm font-medium rounded-md #{if @duplicate_error, do: "bg-gray-300 text-gray-500 cursor-not-allowed", else: "bg-blue-600 text-white hover:bg-blue-700"}"}
+              disabled={@duplicate_error != nil}
+            >
+              Save Business Card
+            </button>
           </:actions>
         </.simple_form>
       </div>
