@@ -86,12 +86,30 @@ defmodule ParselyWeb.ScanCardLive do
     {:noreply, assign(socket, :duplicate_error, nil)}
   end
 
+  def handle_event("email-changed", _params, socket) do
+    # Clear duplicate error when email field changes
+    {:noreply, assign(socket, :duplicate_error, nil)}
+  end
+
   def handle_event("validate", %{"business_card" => business_card_params}, socket) do
     changeset =
       %BusinessCard{}
       |> BusinessCards.change_business_card(business_card_params)
 
-    {:noreply, assign(socket, form: to_form(changeset))}
+    # Clear duplicate error if email has changed from the duplicate email
+    updated_socket = case {socket.assigns.duplicate_error, Map.get(business_card_params, "email")} do
+      {duplicate_email, current_email} when duplicate_email == current_email ->
+        # Email is still the same, keep duplicate error
+        socket
+      {duplicate_email, current_email} when is_binary(duplicate_email) and is_binary(current_email) ->
+        # Email has changed, clear duplicate error
+        assign(socket, :duplicate_error, nil)
+      _ ->
+        # No duplicate error or no email, keep as is
+        socket
+    end
+
+    {:noreply, assign(updated_socket, form: to_form(changeset))}
   end
 
   def handle_event("save", %{"business_card" => business_card_params}, socket) do
@@ -214,7 +232,7 @@ defmodule ParselyWeb.ScanCardLive do
           class="space-y-6"
         >
           <.input field={@form[:name]} type="text" label="Name" required />
-          <.input field={@form[:email]} type="email" label="Email" />
+          <.input field={@form[:email]} type="email" label="Email" phx-change="email-changed" />
           <.input field={@form[:phone]} type="tel" label="Phone" />
           <.input field={@form[:company]} type="text" label="Company" />
           <.input field={@form[:position]} type="text" label="Position" />
