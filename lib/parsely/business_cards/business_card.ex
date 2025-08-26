@@ -11,9 +11,9 @@ defmodule Parsely.BusinessCards.BusinessCard do
     field :image_url, :string
     field :ocr_data, :map
     field :is_virtual, :boolean, default: false
+    field :notes, {:array, :map}, default: []
 
     belongs_to :user, Parsely.Accounts.User
-    has_many :notes, Parsely.BusinessCards.BusinessCardNote
 
     timestamps()
   end
@@ -21,7 +21,7 @@ defmodule Parsely.BusinessCards.BusinessCard do
   @doc false
   def changeset(business_card, attrs) do
     business_card
-    |> cast(attrs, [:name, :email, :phone, :company, :position, :image_url, :ocr_data, :is_virtual, :user_id])
+    |> cast(attrs, [:name, :email, :phone, :company, :position, :image_url, :ocr_data, :is_virtual, :user_id, :notes])
     |> validate_required([:user_id])
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have the @ sign and no spaces")
     |> foreign_key_constraint(:user_id)

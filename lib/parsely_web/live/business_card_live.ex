@@ -99,13 +99,17 @@ defmodule ParselyWeb.BusinessCardLive do
   def handle_event("add-note", %{"note" => note_params}, socket) do
     business_card = socket.assigns.business_card
 
-    case BusinessCards.create_note(%{
+    # Create new note object
+    new_note = %{
       "note" => note_params["text"],
-      "business_card_id" => business_card.id
-    }) do
-      {:ok, _note} ->
-        updated_business_card = BusinessCards.get_business_card!(business_card.id, business_card.user_id)
+      "date" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
 
+    # Add to existing notes array
+    updated_notes = [new_note | (business_card.notes || [])]
+
+    case BusinessCards.update_business_card(business_card, %{notes: updated_notes}) do
+      {:ok, updated_business_card} ->
         {:noreply,
          socket
          |> put_flash(:info, "Note added successfully")
@@ -186,9 +190,14 @@ defmodule ParselyWeb.BusinessCardLive do
                   <div class="space-y-4">
                     <%= for note <- @business_card.notes do %>
                       <div class="bg-zinc-50 rounded-lg p-4">
-                        <p class="text-zinc-900"><%= note.note %></p>
+                        <p class="text-zinc-900"><%= note["note"] %></p>
                         <p class="text-sm text-zinc-500 mt-2">
-                          <%= Calendar.strftime(note.date_added, "%B %d, %Y at %I:%M %p") %>
+                          <%= case DateTime.from_iso8601(note["date"]) do %>
+                            <% {:ok, datetime, _} -> %>
+                              <%= Calendar.strftime(datetime, "%B %d, %Y at %I:%M %p") %>
+                            <% _ -> %>
+                              <%= note["date"] %>
+                          <% end %>
                         </p>
                       </div>
                     <% end %>

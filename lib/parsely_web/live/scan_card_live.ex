@@ -93,6 +93,20 @@ defmodule ParselyWeb.ScanCardLive do
     user = socket.assigns.current_user
     business_card_params = Map.put(business_card_params, "user_id", user.id)
 
+    # Handle notes field - if notes are provided, format them into JSON structure
+    business_card_params = case Map.get(business_card_params, "notes") do
+      notes when is_binary(notes) and byte_size(notes) > 0 ->
+        # Format notes as JSON array with timestamp
+        formatted_notes = [%{
+          "note" => notes,
+          "date" => DateTime.utc_now() |> DateTime.to_iso8601()
+        }]
+        Map.put(business_card_params, "notes", formatted_notes)
+      _ ->
+        # No notes provided, set empty array
+        Map.put(business_card_params, "notes", [])
+    end
+
     case BusinessCards.create_business_card(business_card_params) do
       {:ok, _business_card} ->
         {:noreply,
@@ -185,6 +199,7 @@ defmodule ParselyWeb.ScanCardLive do
           <.input field={@form[:phone]} type="tel" label="Phone" />
           <.input field={@form[:company]} type="text" label="Company" />
           <.input field={@form[:position]} type="text" label="Position" />
+          <.input field={@form[:notes]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
 
           <:actions>
             <.button phx-disable-with="Saving...">Save Business Card</.button>

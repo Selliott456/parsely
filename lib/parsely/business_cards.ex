@@ -5,7 +5,7 @@ defmodule Parsely.BusinessCards do
 
   import Ecto.Query, warn: false
   alias Parsely.Repo
-  alias Parsely.BusinessCards.{BusinessCard, BusinessCardNote}
+  alias Parsely.BusinessCards.BusinessCard
 
   @doc """
   Returns the list of business cards for a user.
@@ -19,7 +19,6 @@ defmodule Parsely.BusinessCards do
   def list_business_cards(user_id) do
     BusinessCard
     |> where(user_id: ^user_id)
-    |> preload(:notes)
     |> order_by([bc], [desc: bc.inserted_at])
     |> Repo.all()
   end
@@ -41,7 +40,6 @@ defmodule Parsely.BusinessCards do
   def get_business_card!(id, user_id) do
     BusinessCard
     |> where(id: ^id, user_id: ^user_id)
-    |> preload(:notes)
     |> Repo.one!()
   end
 
@@ -138,39 +136,4 @@ defmodule Parsely.BusinessCards do
   end
 
   def duplicate_exists?(_user_id, _email), do: false
-
-  @doc """
-  Creates a note for a business card.
-
-  ## Examples
-
-      iex> create_note(%{field: value})
-      {:ok, %BusinessCardNote{}}
-
-      iex> create_note(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_note(attrs \\ %{}) do
-    %BusinessCardNote{}
-    |> BusinessCardNote.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Gets all notes for a business card.
-  """
-  def list_notes(business_card_id) do
-    BusinessCardNote
-    |> where(business_card_id: ^business_card_id)
-    |> order_by([n], [desc: n.date_added])
-    |> Repo.all()
-  end
-
-  @doc """
-  Deletes a note.
-  """
-  def delete_note(%BusinessCardNote{} = note) do
-    Repo.delete(note)
-  end
 end
