@@ -97,19 +97,17 @@ defmodule Parsely.OCRService do
     IO.puts("Clean text:")
     IO.puts(clean_text)
 
-    # Extract information using regex patterns
-    name = extract_name(clean_text)
-    email = extract_email(clean_text)
-    phone = extract_phone(clean_text)
-    company = extract_company(clean_text)
-    position = extract_position(clean_text)
+    # Extract the three main fields
+    email = find_email(clean_text)
+    phone = find_phone(clean_text)
+    name = find_name(clean_text, email, phone)
 
     result = %{
       name: name,
       email: email,
       phone: phone,
-      company: company,
-      position: position,
+      company: nil, # Not focusing on this for now
+      position: nil, # Not focusing on this for now
       raw_text: clean_text
     }
 
@@ -117,116 +115,78 @@ defmodule Parsely.OCRService do
     IO.puts("Name: #{name}")
     IO.puts("Email: #{email}")
     IO.puts("Phone: #{phone}")
-    IO.puts("Company: #{company}")
-    IO.puts("Position: #{position}")
 
     {:ok, result}
   end
 
-  defp extract_name(text) do
-    # Look for patterns that might be names
-    # Usually names are on the first few lines and contain only letters, spaces, and common name characters
-    lines = String.split(text, "\n")
-
-    # Look for lines that look like names (mostly letters, 2-4 words, no special characters)
-    name_candidates = lines
-      |> Enum.take(5) # Check first 5 lines
-      |> Enum.filter(fn line ->
-        line = String.trim(line)
-        String.length(line) > 2 and
-        String.length(line) < 50 and
-        Regex.match?(~r/^[A-Za-z\s\.\-']+$/, line) and
-        !Regex.match?(~r/^[A-Z\s]+$/, line) and # Not all caps (likely company)
-        !String.contains?(line, "@") and # Not an email
-        !Regex.match?(~r/\d/, line) # No numbers
-      end)
-
-    case name_candidates do
-      [name | _] -> String.trim(name)
-      _ -> nil
-    end
-  end
-
-  defp extract_email(text) do
-    case Regex.run(~r/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, text) do
-      [email | _] -> email
+  defp find_email(text) do
+    # Simple email pattern - anything with @ symbol
+    case Regex.run(~r/\S+@\S+/, text) do
+      [email | _] ->
+        # Clean up the email
+        email
+        |> String.replace(~r/\s+/, "")
+        |> String.replace("[at]", "@")
+        |> String.replace("[dot]", ".")
       nil -> nil
     end
   end
 
-  defp extract_phone(text) do
-    # Look for various phone number formats
-    phone_patterns = [
-      ~r/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, # US format: 123-456-7890
-      ~r/\b\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}\b/, # International
-      ~r/\b\(\d{3}\)\s?\d{3}[-.\s]?\d{4}\b/, # (123) 456-7890
-      ~r/\b\d{10}\b/, # Just 10 digits
-      ~r/\+\d{1,3}\s?\(\d{3}\)\s?\d{3}[-.\s]?\d{4}\b/ # +1 (555) 123-4567
-    ]
-
-    Enum.find_value(phone_patterns, fn pattern ->
-      case Regex.run(pattern, text) do
-        [phone | _] -> phone
-        nil -> nil
-      end
-    end)
+  defp find_phone(text) do
+    # Look for any sequence of 10+ digits (phone numbers)
+    case Regex.run(~r/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, text) do
+      [phone | _] -> phone
+      nil ->
+        # Try other phone patterns
+        case Regex.run(~r/\b\d{10,}\b/, text) do
+          [phone | _] -> phone
+          nil -> nil
+        end
+    end
   end
 
-  defp extract_company(text) do
+  defp find_name(text, email, phone) do
+    # Split into lines and look for name
     lines = String.split(text, "\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.filter(fn line -> String.length(line) > 0 end)
 
-    # Look for lines that might be company names
-    # Usually on early lines, not too long, might be mixed case
-    company_candidates = lines
-      |> Enum.take(8) # Check first 8 lines
+    IO.puts("=== ANALYZING LINES FOR NAME ===")
+    Enum.with_index(lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("Line #{index}: '#{line}'")
+    end)
+
+    # Look for name in first few lines
+    name_candidates = lines
+      |> Enum.take(5)
       |> Enum.filter(fn line ->
         line = String.trim(line)
         String.length(line) > 2 and
-        String.length(line) < 40 and
-        # Look for lines that contain "Corp", "Inc", "LLC", etc. or are all caps
-        (String.contains?(line, "Corp") or
-         String.contains?(line, "Inc") or
-         String.contains?(line, "LLC") or
-         String.contains?(line, "Ltd") or
-         String.contains?(line, "Company") or
-         Regex.match?(~r/^[A-Z\s&\.\-]+$/, line)) and
-        !String.contains?(line, "@") and # Not an email
-        !Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) # Not a phone number
+        String.length(line) < 50 and
+        # Must contain letters
+        Regex.match?(~r/[A-Za-z]/, line) and
+        # Not an email line
+        line != email and
+        !String.contains?(line, "@") and
+        # Not a phone line
+        line != phone and
+        !Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) and
+        # Not all digits
+        !Regex.match?(~r/^\d+$/, line)
       end)
 
-    case company_candidates do
-      [company | _] -> String.trim(company)
-      _ -> nil
+    case name_candidates do
+      [name | _] ->
+        IO.puts("Found name: '#{name}'")
+        String.trim(name)
+      _ ->
+        IO.puts("No name found")
+        nil
     end
   end
 
-  defp extract_position(text) do
-    lines = String.split(text, "\n")
 
-    # Look for job titles (usually contain words like "Manager", "Director", "Engineer", etc.)
-    position_keywords = [
-      "manager", "director", "engineer", "developer", "analyst", "coordinator",
-      "specialist", "consultant", "executive", "president", "ceo", "cto", "cfo",
-      "vp", "vice president", "head", "lead", "senior", "junior", "associate",
-      "officer", "chief", "principal", "architect", "designer", "programmer"
-    ]
-
-    position_candidates = lines
-      |> Enum.filter(fn line ->
-        line = String.trim(line)
-        String.length(line) > 3 and String.length(line) < 50 and
-        Enum.any?(position_keywords, fn keyword ->
-          String.contains?(String.downcase(line), keyword)
-        end) and
-        !String.contains?(line, "@") and # Not an email
-        !Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) # Not a phone number
-      end)
-
-    case position_candidates do
-      [position | _] -> String.trim(position)
-      _ -> nil
-    end
-  end
 
     @doc """
   Test function to verify OCR service is working.
@@ -264,5 +224,100 @@ defmodule Parsely.OCRService do
         IO.puts("OCR API test failed: #{reason}")
         {:error, reason}
     end
+  end
+
+  @doc """
+  Debug function to analyze OCR text and show what each extraction function finds.
+  """
+  def debug_ocr_extraction(text) do
+    IO.puts("=== DEBUGGING OCR EXTRACTION ===")
+    IO.puts("Input text:")
+    IO.puts(text)
+    IO.puts("")
+
+    # Clean up the text
+    clean_text = text
+      |> String.replace(~r/\r\n/, "\n")
+      |> String.replace(~r/\r/, "\n")
+      |> String.trim()
+
+    IO.puts("Clean text:")
+    IO.puts(clean_text)
+    IO.puts("")
+
+    # Analyze each line
+    lines = String.split(clean_text, "\n")
+    IO.puts("=== LINE ANALYSIS ===")
+    Enum.with_index(lines, 1)
+    |> Enum.each(fn {line, index} ->
+      trimmed_line = String.trim(line)
+      if String.length(trimmed_line) > 0 do
+        IO.puts("Line #{index}: '#{trimmed_line}'")
+        IO.puts("  Length: #{String.length(trimmed_line)}")
+        IO.puts("  Contains @: #{String.contains?(trimmed_line, "@")}")
+        IO.puts("  Contains digits: #{Regex.match?(~r/\d/, trimmed_line)}")
+        IO.puts("  All caps: #{Regex.match?(~r/^[A-Z\s]+$/, trimmed_line)}")
+        IO.puts("  Name pattern: #{Regex.match?(~r/^[A-Za-z\s\.\-']+$/, trimmed_line)}")
+        IO.puts("")
+      end
+    end)
+
+            # Test each extraction function
+    IO.puts("=== EXTRACTION RESULTS ===")
+
+    # Extract the three main fields
+    email = find_email(clean_text)
+    phone = find_phone(clean_text)
+    name = find_name(clean_text, email, phone)
+
+    IO.puts("Name extraction: #{name}")
+    IO.puts("Email extraction: #{email}")
+    IO.puts("Phone extraction: #{phone}")
+
+            IO.puts("")
+    IO.puts("=== FINAL RESULT ===")
+    result = %{
+      name: name,
+      email: email,
+      phone: phone,
+      company: nil,
+      position: nil,
+      raw_text: clean_text
+    }
+    IO.puts(inspect(result, pretty: true))
+
+    result
+  end
+
+  @doc """
+  Test function with sample business card text to debug extraction logic.
+  """
+  def test_with_sample_text() do
+    sample_text = """
+    John Doe
+    Software Engineer
+    Example Corp
+    john.doe@example.com
+    +1 (555) 123-4567
+    """
+
+    IO.puts("=== TESTING WITH SAMPLE TEXT ===")
+    debug_ocr_extraction(sample_text)
+  end
+
+  @doc """
+  Test function with another sample business card text.
+  """
+  def test_with_another_sample() do
+    sample_text = """
+    Jane Smith
+    Marketing Director
+    Tech Solutions Inc
+    jane.smith@techsolutions.com
+    (555) 987-6543
+    """
+
+    IO.puts("=== TESTING WITH ANOTHER SAMPLE TEXT ===")
+    debug_ocr_extraction(sample_text)
   end
 end
