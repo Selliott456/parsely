@@ -12,6 +12,7 @@ defmodule ParselyWeb.ScanCardLive do
       show_camera: true,
       photo_data: nil,
       duplicate_error: nil,
+      processing_ocr: false,
       form: to_form(BusinessCards.change_business_card(%BusinessCard{}))
     )
 
@@ -21,17 +22,17 @@ defmodule ParselyWeb.ScanCardLive do
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
     IO.puts("photo-captured event: starting image save + OCR")
 
-    # Hide camera and add photo data for form
+    # Hide camera, add photo data, and show loading state immediately
     socket =
       socket
       |> assign(:photo_data, photo_data)
       |> assign(:show_camera, false)
+      |> assign(:processing_ocr, true)
 
-    IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}")
+    IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}, processing_ocr=#{socket.assigns.processing_ocr}")
 
-    # Send immediate UI update to show photo preview
-    # Then process OCR asynchronously
-    Process.send_after(self(), {:process_ocr, photo_data}, 100)
+    # Process OCR immediately (not with delay)
+    Process.send(self(), {:process_ocr, photo_data}, [])
 
     {:noreply, socket}
   end
@@ -66,7 +67,7 @@ defmodule ParselyWeb.ScanCardLive do
         IO.puts("Form field values: name=#{updated_socket.assigns.form[:name].value}, email=#{updated_socket.assigns.form[:email].value}")
         IO.puts("Form field values: phone=#{updated_socket.assigns.form[:phone].value}, company=#{updated_socket.assigns.form[:company].value}, position=#{updated_socket.assigns.form[:position].value}")
 
-        {:noreply, updated_socket}
+        {:noreply, assign(updated_socket, :processing_ocr, false)}
 
       {:error, reason} ->
         IO.puts("Failed to save image: #{reason}")
@@ -207,7 +208,17 @@ defmodule ParselyWeb.ScanCardLive do
         <!-- Photo Preview Area -->
         <div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
           <div class="text-center mb-6">
-            <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
+            <%= if @processing_ocr do %>
+              <div class="mx-auto max-w-xs">
+                <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm opacity-50" />
+                <div class="mt-4 flex items-center justify-center">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span class="ml-2 text-sm text-gray-600">Processing image...</span>
+                </div>
+              </div>
+            <% else %>
+              <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
+            <% end %>
             <div class="mt-4">
               <button
                 type="button"
