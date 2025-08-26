@@ -14,8 +14,7 @@ defmodule ParselyWeb.ScanCardLive do
       form: to_form(BusinessCards.change_business_card(%BusinessCard{}))
     )
 
-    # Trigger camera immediately
-    {:ok, push_event(socket, "scan-card", %{})}
+    {:ok, socket}
   end
 
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
@@ -128,7 +127,7 @@ defmodule ParselyWeb.ScanCardLive do
                 <div class="mx-auto h-16 w-16 text-zinc-400 mb-4">
                   <.icon name="hero-camera" class="h-16 w-16" />
                 </div>
-                <p class="text-zinc-600">Camera access requested...</p>
+                <p class="text-zinc-600" id="camera-status">Initializing camera...</p>
               </div>
             </div>
 

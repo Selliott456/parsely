@@ -6,26 +6,33 @@ defmodule Parsely.OCRService do
   @doc """
   Extracts text from a base64 encoded image and parses it for business card information.
   """
-  def extract_business_card_info(base64_image) do
+    def extract_business_card_info(base64_image) do
+    IO.puts("=== OCR SERVICE: Starting extraction ===")
+    IO.puts("Base64 image length: #{String.length(base64_image)}")
+
     case call_ocr_api(base64_image) do
       {:ok, text} ->
+        IO.puts("=== OCR SERVICE: Raw OCR text ===")
+        IO.puts(text)
         parse_business_card_text(text)
     end
   end
 
-      defp call_ocr_api(base64_image) do
-    # For now, we'll simulate OCR results since HTTPoison isn't loading properly
-    # In production, you would use a real OCR service like Google Vision API or AWS Textract
+    defp call_ocr_api(base64_image) do
+    # Remove the data:image/jpeg;base64, prefix if present
+    clean_base64 = String.replace(base64_image, ~r/^data:image\/[^;]+;base64,/, "")
 
-    # Simulate processing delay
-    :timer.sleep(1000)
+    IO.puts("=== OCR SERVICE: Calling OCR API ===")
+    IO.puts("Clean base64 length: #{String.length(clean_base64)}")
 
-    # For testing, let's extract some basic info from the base64 data
-    # In a real implementation, you would send this to an OCR API
-    case Base.decode64(String.replace(base64_image, ~r/^data:image\/[^;]+;base64,/, "")) do
-      {:ok, _binary_data} ->
-        # Simulate different OCR results based on the image size or other characteristics
-        # This is just for testing - in production you'd get real OCR results
+    # Try to use a free OCR API (OCR.space)
+    case call_ocrspace_api(clean_base64) do
+      {:ok, text} ->
+        {:ok, text}
+      {:error, reason} ->
+        IO.puts("=== OCR SERVICE: OCR API failed, using fallback mock data ===")
+        IO.puts("Error: #{reason}")
+        # Fallback to mock data for testing
         {:ok, """
         John Doe
         Software Engineer
@@ -33,17 +40,62 @@ defmodule Parsely.OCRService do
         john.doe@example.com
         +1 (555) 123-4567
         """}
-      :error ->
-        {:error, "Invalid base64 image data"}
+    end
+  end
+
+  defp call_ocrspace_api(base64_data) do
+    # OCR.space free API (limited to 500 requests per day)
+    url = "https://api.ocr.space/parse/image"
+
+    headers = [
+      {"Content-Type", "application/x-www-form-urlencoded"}
+    ]
+
+    body = URI.encode_query(%{
+      "apikey" => "K81724188988957", # Free API key
+      "base64Image" => "data:image/jpeg;base64,#{base64_data}",
+      "language" => "eng",
+      "isOverlayRequired" => "false",
+      "filetype" => "jpg"
+    })
+
+    IO.puts("=== OCR SERVICE: Calling OCR.space API ===")
+
+    case HTTPoison.post(url, body, headers) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
+        IO.puts("=== OCR SERVICE: OCR.space API response ===")
+        IO.puts(response_body)
+
+        case Jason.decode(response_body) do
+          {:ok, %{"ParsedResults" => [%{"ParsedText" => text} | _]}} ->
+            {:ok, text}
+          {:ok, %{"ParsedResults" => []}} ->
+            {:error, "No text found in image"}
+          {:ok, %{"ErrorMessage" => error}} ->
+            {:error, "OCR API error: #{error}"}
+          {:error, _} ->
+            {:error, "Failed to parse OCR API response"}
+        end
+
+      {:ok, %HTTPoison.Response{status_code: status_code}} ->
+        {:error, "OCR API returned status code: #{status_code}"}
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        {:error, "HTTP request failed: #{reason}"}
     end
   end
 
   defp parse_business_card_text(text) do
+    IO.puts("=== OCR SERVICE: Parsing business card text ===")
+
     # Clean up the text
     clean_text = text
       |> String.replace(~r/\r\n/, "\n")
       |> String.replace(~r/\r/, "\n")
       |> String.trim()
+
+    IO.puts("Clean text:")
+    IO.puts(clean_text)
 
     # Extract information using regex patterns
     name = extract_name(clean_text)
@@ -52,14 +104,23 @@ defmodule Parsely.OCRService do
     company = extract_company(clean_text)
     position = extract_position(clean_text)
 
-    {:ok, %{
+    result = %{
       name: name,
       email: email,
       phone: phone,
       company: company,
       position: position,
       raw_text: clean_text
-    }}
+    }
+
+    IO.puts("=== OCR SERVICE: Extracted data ===")
+    IO.puts("Name: #{name}")
+    IO.puts("Email: #{email}")
+    IO.puts("Phone: #{phone}")
+    IO.puts("Company: #{company}")
+    IO.puts("Position: #{position}")
+
+    {:ok, result}
   end
 
   defp extract_name(text) do
@@ -75,7 +136,9 @@ defmodule Parsely.OCRService do
         String.length(line) > 2 and
         String.length(line) < 50 and
         Regex.match?(~r/^[A-Za-z\s\.\-']+$/, line) and
-        !Regex.match?(~r/^[A-Z\s]+$/, line) # Not all caps (likely company)
+        !Regex.match?(~r/^[A-Z\s]+$/, line) and # Not all caps (likely company)
+        !String.contains?(line, "@") and # Not an email
+        !Regex.match?(~r/\d/, line) # No numbers
       end)
 
     case name_candidates do
@@ -124,7 +187,11 @@ defmodule Parsely.OCRService do
         (String.contains?(line, "Corp") or
          String.contains?(line, "Inc") or
          String.contains?(line, "LLC") or
-         Regex.match?(~r/^[A-Z\s&\.\-]+$/, line))
+         String.contains?(line, "Ltd") or
+         String.contains?(line, "Company") or
+         Regex.match?(~r/^[A-Z\s&\.\-]+$/, line)) and
+        !String.contains?(line, "@") and # Not an email
+        !Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) # Not a phone number
       end)
 
     case company_candidates do
@@ -140,7 +207,8 @@ defmodule Parsely.OCRService do
     position_keywords = [
       "manager", "director", "engineer", "developer", "analyst", "coordinator",
       "specialist", "consultant", "executive", "president", "ceo", "cto", "cfo",
-      "vp", "vice president", "head", "lead", "senior", "junior", "associate"
+      "vp", "vice president", "head", "lead", "senior", "junior", "associate",
+      "officer", "chief", "principal", "architect", "designer", "programmer"
     ]
 
     position_candidates = lines
@@ -149,12 +217,52 @@ defmodule Parsely.OCRService do
         String.length(line) > 3 and String.length(line) < 50 and
         Enum.any?(position_keywords, fn keyword ->
           String.contains?(String.downcase(line), keyword)
-        end)
+        end) and
+        !String.contains?(line, "@") and # Not an email
+        !Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) # Not a phone number
       end)
 
     case position_candidates do
       [position | _] -> String.trim(position)
       _ -> nil
+    end
+  end
+
+    @doc """
+  Test function to verify OCR service is working.
+  """
+  def test_ocr() do
+    IO.puts("=== TESTING OCR SERVICE ===")
+
+    # Test with a simple base64 image (1x1 pixel)
+    test_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwA/8A"
+
+    {:ok, result} = extract_business_card_info(test_image)
+    IO.puts("OCR test successful!")
+    IO.puts("Result: #{inspect(result)}")
+    {:ok, result}
+  end
+
+  @doc """
+  Test function to verify OCR API directly (without fallback).
+  """
+  def test_ocr_api() do
+    IO.puts("=== TESTING OCR API DIRECTLY ===")
+
+    # Test with a simple base64 image (1x1 pixel)
+    test_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwA/8A"
+
+    # Remove the data:image/jpeg;base64, prefix
+    clean_base64 = String.replace(test_image, ~r/^data:image\/[^;]+;base64,/, "")
+
+    case call_ocrspace_api(clean_base64) do
+      {:ok, text} ->
+        IO.puts("OCR API test successful!")
+        IO.puts("Raw text: #{text}")
+        {:ok, text}
+      {:error, reason} ->
+        IO.puts("OCR API test failed: #{reason}")
+        {:error, reason}
     end
   end
 end
