@@ -23,6 +23,10 @@ defmodule ParselyWeb.DashboardLive do
     {:noreply, push_navigate(socket, to: ~p"/manual-entry")}
   end
 
+  def handle_event("view-business-cards", _params, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/business-cards")}
+  end
+
   def render(assigns) do
     ~H"""
     <div class="mx-auto max-w-7xl">
@@ -47,28 +51,39 @@ defmodule ParselyWeb.DashboardLive do
             <.icon name="hero-pencil-square" class="h-4 w-4 mr-2" />
             Add Manually
           </button>
+
+          <!-- View Business Cards -->
+          <button
+            phx-click="view-business-cards"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            <.icon name="hero-eye" class="h-4 w-4 mr-2" />
+            View Business Cards
+          </button>
         </div>
       </div>
 
-      <!-- Business Cards List -->
+      <!-- Quick Stats -->
       <div class="bg-white rounded-lg border border-zinc-200 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Your Business Cards</h2>
-
-        <%= if Enum.empty?(@business_cards) do %>
-          <p class="text-gray-500">No business cards yet. Add your first one!</p>
-        <% else %>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <%= for card <- @business_cards do %>
-              <div class="border border-gray-200 rounded-lg p-4">
-                <h3 class="font-medium text-gray-900"><%= card.name %></h3>
-                <p class="text-sm text-gray-600"><%= card.position %></p>
-                <p class="text-sm text-gray-600"><%= card.company %></p>
-                <p class="text-sm text-gray-600"><%= card.email %></p>
-                <p class="text-sm text-gray-600"><%= card.phone %></p>
-              </div>
-            <% end %>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-blue-600"><%= length(@business_cards) %></div>
+            <div class="text-sm text-gray-600">Total Business Cards</div>
           </div>
-        <% end %>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-green-600">
+              <%= @business_cards |> Enum.filter(& &1.is_virtual) |> length() %>
+            </div>
+            <div class="text-sm text-gray-600">Virtual Cards</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-purple-600">
+              <%= @business_cards |> Enum.filter(& !&1.is_virtual) |> length() %>
+            </div>
+            <div class="text-sm text-gray-600">Scanned Cards</div>
+          </div>
+        </div>
       </div>
     </div>
     """

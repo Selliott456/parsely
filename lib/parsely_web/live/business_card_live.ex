@@ -13,7 +13,8 @@ defmodule ParselyWeb.BusinessCardLive do
        business_cards: business_cards,
        page_title: "Business Cards",
        show_form: false,
-       show_details: false
+       show_details: false,
+       search_query: ""
      )}
   end
 
@@ -126,6 +127,26 @@ defmodule ParselyWeb.BusinessCardLive do
     {:noreply, put_flash(socket, :info, "Note deletion not implemented yet")}
   end
 
+  def handle_event("search", %{"query" => query}, socket) do
+    user = socket.assigns.current_user
+    business_cards = BusinessCards.search_business_cards(user.id, query)
+
+    {:noreply,
+     socket
+     |> assign(:business_cards, business_cards)
+     |> assign(:search_query, query)}
+  end
+
+  def handle_event("clear-search", _params, socket) do
+    user = socket.assigns.current_user
+    business_cards = BusinessCards.list_business_cards(user.id)
+
+    {:noreply,
+     socket
+     |> assign(:business_cards, business_cards)
+     |> assign(:search_query, "")}
+  end
+
     def render(assigns) do
     ~H"""
     <%= if @show_form do %>
@@ -235,6 +256,35 @@ defmodule ParselyWeb.BusinessCardLive do
               </.link>
             </:actions>
           </.header>
+
+          <!-- Search Bar -->
+          <div class="mt-6">
+            <div class="flex items-center space-x-4">
+              <div class="flex-1 max-w-md">
+                <form phx-change="search" class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <.icon name="hero-magnifying-glass" class="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    name="query"
+                    value={@search_query}
+                    placeholder="Search business cards..."
+                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </form>
+              </div>
+              <%= if @search_query != "" do %>
+                <button
+                  phx-click="clear-search"
+                  class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <.icon name="hero-x-mark" class="h-4 w-4 mr-1" />
+                  Clear
+                </button>
+              <% end %>
+            </div>
+          </div>
 
           <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <%= for business_card <- @business_cards do %>
