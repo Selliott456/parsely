@@ -244,7 +244,9 @@ defmodule ParselyWeb.BusinessCardLive do
               <div class="flex-1 max-w-md">
                 <form phx-change="search" class="relative">
                   <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <.icon name="hero-magnifying-glass" class="h-5 w-5 text-gray-400" />
+                    <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
                   </div>
                   <input
                     type="text"
@@ -260,7 +262,9 @@ defmodule ParselyWeb.BusinessCardLive do
                   phx-click="clear-search"
                   class="inline-flex items-center"
                 >
-                  <.icon name="hero-x-mark" class="h-4 w-4 mr-1" />
+                  <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
                   Clear
                 </.button_secondary>
               <% end %>
@@ -269,73 +273,73 @@ defmodule ParselyWeb.BusinessCardLive do
 
           <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <%= for business_card <- @business_cards do %>
-              <div class="bg-white overflow-hidden shadow rounded-lg">
-                <div class="p-6">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                      <div class="h-10 w-10 rounded-full bg-zinc-300 flex items-center justify-center">
-                        <span class="text-sm font-medium text-zinc-700">
-                          <%= String.first(business_card.name || "?") %>
-                        </span>
+              <.link navigate={~p"/business-cards/#{business_card.id}"} class="block">
+                <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                  <div class="p-6">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0">
+                        <div class="h-10 w-10 rounded-full bg-zinc-300 flex items-center justify-center">
+                          <span class="text-sm font-medium text-zinc-700">
+                            <%= String.first(business_card.name || "?") %>
+                          </span>
+                        </div>
                       </div>
+                      <div class="ml-4 flex-1 min-w-0">
+                        <p class="text-sm font-medium text-zinc-900 truncate">
+                          <%= business_card.name %>
+                        </p>
+                        <p class="text-sm text-zinc-500 truncate">
+                          <%= business_card.company %>
+                        </p>
+                      </div>
+
                     </div>
-                    <div class="ml-4 flex-1 min-w-0">
-                      <p class="text-sm font-medium text-zinc-900 truncate">
-                        <%= business_card.name %>
-                      </p>
-                      <p class="text-sm text-zinc-500 truncate">
-                        <%= business_card.company %>
-                      </p>
-                    </div>
-                    <div class="ml-4 flex-shrink-0">
-                      <.link
-                        navigate={~p"/business-cards/#{business_card}"}
-                        class="text-zinc-400 hover:text-zinc-500"
+
+                    <%= if business_card.email do %>
+                      <div class="mt-4">
+                        <p class="text-sm text-zinc-600">
+                          <span class="font-medium">Email:</span> <%= business_card.email %>
+                        </p>
+                      </div>
+                    <% end %>
+
+                    <%= if business_card.phone do %>
+                      <div class="mt-2">
+                        <p class="text-sm text-zinc-600">
+                          <span class="font-medium">Phone:</span> <%= business_card.phone %>
+                        </p>
+                      </div>
+                    <% end %>
+
+                    <div class="mt-4 flex justify-between items-center">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Physical
+                      </span>
+
+                      <button
+                        phx-click="delete"
+                        phx-value-id={business_card.id}
+                        data-confirm="Are you sure you want to delete this business card?"
+                        class="bg-mint-deep hover:bg-mint-primary text-white p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                        onclick="event.stopPropagation();"
                       >
-                        <.icon name="hero-eye" class="h-5 w-5" />
-                      </.link>
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-
-                  <%= if business_card.email do %>
-                    <div class="mt-4">
-                      <p class="text-sm text-zinc-600">
-                        <span class="font-medium">Email:</span> <%= business_card.email %>
-                      </p>
-                    </div>
-                  <% end %>
-
-                  <%= if business_card.phone do %>
-                    <div class="mt-2">
-                      <p class="text-sm text-zinc-600">
-                        <span class="font-medium">Phone:</span> <%= business_card.phone %>
-                      </p>
-                    </div>
-                  <% end %>
-
-                  <div class="mt-4 flex justify-between items-center">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Physical
-                    </span>
-
-                    <button
-                      phx-click="delete"
-                      phx-value-id={business_card.id}
-                      data-confirm="Are you sure you want to delete this business card?"
-                      class="text-red-400 hover:text-red-500 p-1 rounded"
-                    >
-                      <.icon name="hero-trash" class="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
-              </div>
+              </.link>
             <% end %>
           </div>
 
           <%= if Enum.empty?(@business_cards) do %>
             <div class="text-center py-12">
               <div class="mx-auto h-12 w-12 text-zinc-400">
-                <.icon name="hero-identification" class="h-12 w-12" />
+                <svg class="h-12 w-12" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM18 9v11h4V9h-4z"/>
+                </svg>
               </div>
               <h3 class="mt-2 text-sm font-medium text-zinc-900">No business cards</h3>
               <p class="mt-1 text-sm text-zinc-500">
