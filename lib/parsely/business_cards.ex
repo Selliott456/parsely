@@ -61,23 +61,7 @@ defmodule Parsely.BusinessCards do
     |> Repo.insert()
   end
 
-  @doc """
-  Creates a virtual business card.
 
-  ## Examples
-
-      iex> create_virtual_card(%{field: value})
-      {:ok, %BusinessCard{}}
-
-      iex> create_virtual_card(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_virtual_card(attrs \\ %{}) do
-    %BusinessCard{}
-    |> BusinessCard.virtual_card_changeset(attrs)
-    |> Repo.insert()
-  end
 
   @doc """
   Updates a business card.

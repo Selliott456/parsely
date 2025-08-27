@@ -2,7 +2,6 @@ defmodule ParselyWeb.BusinessCardLive do
   use ParselyWeb, :live_view
 
   alias Parsely.BusinessCards
-  alias Parsely.BusinessCards.BusinessCard
 
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
@@ -65,24 +64,7 @@ defmodule ParselyWeb.BusinessCardLive do
     end
   end
 
-  def handle_event("save-virtual", %{"business_card" => business_card_params}, socket) do
-    user = socket.assigns.current_user
-    business_card_params = Map.put(business_card_params, "user_id", user.id)
 
-    case BusinessCards.create_virtual_card(business_card_params) do
-      {:ok, business_card} ->
-        business_cards = BusinessCards.list_business_cards(user.id)
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Virtual card created successfully")
-         |> assign(business_cards: business_cards)
-         |> push_navigate(to: ~p"/business-cards/#{business_card}")}
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
-    end
-  end
 
   def handle_event("delete", %{"id" => id}, socket) do
     user = socket.assigns.current_user
@@ -334,7 +316,7 @@ defmodule ParselyWeb.BusinessCardLive do
 
                   <div class="mt-4 flex justify-between items-center">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      <%= if business_card.is_virtual, do: "Virtual", else: "Physical" %>
+                      Physical
                     </span>
 
                     <button

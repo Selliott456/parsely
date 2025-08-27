@@ -19,10 +19,6 @@ defmodule ParselyWeb.DashboardLive do
     {:noreply, push_navigate(socket, to: ~p"/scan-card")}
   end
 
-  def handle_event("add-manually", _params, socket) do
-    {:noreply, push_navigate(socket, to: ~p"/manual-entry")}
-  end
-
   def handle_event("view-business-cards", _params, socket) do
     {:noreply, push_navigate(socket, to: ~p"/business-cards")}
   end
@@ -44,13 +40,7 @@ defmodule ParselyWeb.DashboardLive do
           </button>
 
           <!-- Add Manually -->
-          <button
-            phx-click="add-manually"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          >
-            <.icon name="hero-pencil-square" class="h-4 w-4 mr-2" />
-            Add Manually
-          </button>
+
 
           <!-- View Business Cards -->
           <button
@@ -66,20 +56,14 @@ defmodule ParselyWeb.DashboardLive do
       <!-- Quick Stats -->
       <div class="bg-white rounded-lg border border-zinc-200 p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="text-center">
             <div class="text-2xl font-bold text-blue-600"><%= length(@business_cards) %></div>
             <div class="text-sm text-gray-600">Total Business Cards</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold text-green-600">
-              <%= @business_cards |> Enum.filter(& &1.is_virtual) |> length() %>
-            </div>
-            <div class="text-sm text-gray-600">Virtual Cards</div>
-          </div>
-          <div class="text-center">
             <div class="text-2xl font-bold text-purple-600">
-              <%= @business_cards |> Enum.filter(& !&1.is_virtual) |> length() %>
+              <%= length(@business_cards) %>
             </div>
             <div class="text-sm text-gray-600">Scanned Cards</div>
           </div>
