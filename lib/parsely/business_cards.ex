@@ -19,7 +19,7 @@ defmodule Parsely.BusinessCards do
   def list_business_cards(user_id) do
     BusinessCard
     |> where(user_id: ^user_id)
-    |> order_by([bc], [desc: bc.inserted_at])
+    |> order_by([bc], [asc: fragment("COALESCE(?, '')", bc.name), desc: bc.inserted_at])
     |> Repo.all()
   end
 

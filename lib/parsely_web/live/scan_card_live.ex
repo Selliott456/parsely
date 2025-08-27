@@ -163,19 +163,18 @@ defmodule ParselyWeb.ScanCardLive do
 
     ~H"""
     <div id="scan-card" class="mx-auto max-w-4xl" phx-hook="CameraCapture">
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Scan Business Card</h1>
-        <p class="text-gray-600">Take a photo of a business card to extract information</p>
-      </div>
 
       <%= if @show_camera do %>
         <!-- Camera Capture Interface -->
-        <div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
+        <div class="bg-white rounded-lg border border-zinc-200 p-6 my-8">
           <div class="text-center">
             <div class="mx-auto h-64 w-full bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
               <div class="text-center">
                 <div class="mx-auto h-16 w-16 text-zinc-400 mb-4">
-                  <.icon name="hero-camera" class="h-16 w-16" />
+                  <svg class="h-16 w-16" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+                    <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+                  </svg>
                 </div>
                 <p class="text-zinc-600" id="camera-status">Initializing camera...</p>
               </div>
@@ -187,18 +186,13 @@ defmodule ParselyWeb.ScanCardLive do
                 id="capture-photo-btn"
                 class="inline-flex items-center relative z-10"
               >
-                <.icon name="hero-camera" class="h-4 w-4 mr-2" />
+                <svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+                  <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+                </svg>
                 Capture Photo
               </.button_primary>
 
-              <.button_secondary
-                type="button"
-                phx-click="retake-photo"
-                class="inline-flex items-center relative z-10"
-              >
-                <.icon name="hero-arrow-left" class="h-4 w-4 mr-2" />
-                Back
-              </.button_secondary>
             </div>
           </div>
         </div>
