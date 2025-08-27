@@ -31,42 +31,16 @@ defmodule ParselyWeb.DashboardLive do
 
         <div class="flex space-x-4">
           <!-- Scan Business Card -->
-          <button
-            phx-click="scan-card"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
+          <.button_primary phx-click="scan-card" class="inline-flex items-center">
             <.icon name="hero-camera" class="h-4 w-4 mr-2" />
             Scan Business Card
-          </button>
-
-          <!-- Add Manually -->
-
+          </.button_primary>
 
           <!-- View Business Cards -->
-          <button
-            phx-click="view-business-cards"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          >
+          <.button_secondary phx-click="view-business-cards" class="inline-flex items-center">
             <.icon name="hero-eye" class="h-4 w-4 mr-2" />
             View Business Cards
-          </button>
-        </div>
-      </div>
-
-      <!-- Quick Stats -->
-      <div class="bg-white rounded-lg border border-zinc-200 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="text-center">
-            <div class="text-2xl font-bold text-blue-600"><%= length(@business_cards) %></div>
-            <div class="text-sm text-gray-600">Total Business Cards</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-purple-600">
-              <%= length(@business_cards) %>
-            </div>
-            <div class="text-sm text-gray-600">Scanned Cards</div>
-          </div>
+          </.button_secondary>
         </div>
       </div>
     </div>

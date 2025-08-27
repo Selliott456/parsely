@@ -26,9 +26,9 @@ defmodule ParselyWeb.UserLoginLive do
           </.link>
         </:actions>
         <:actions>
-          <.button phx-disable-with="Logging in..." class="w-full">
+          <.button_primary phx-disable-with="Logging in..." class="w-full">
             Log in <span aria-hidden="true">→</span>
-          </.button>
+          </.button_primary>
         </:actions>
       </.simple_form>
     </div>

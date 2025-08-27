@@ -39,7 +39,7 @@ defmodule ParselyWeb.UserRegistrationLive do
         <.input field={@form[:password_confirmation]} type="password" label="Confirm Password" required />
 
         <:actions>
-          <.button phx-disable-with="Creating account..." class="w-full">Create an account</.button>
+          <.button_primary phx-disable-with="Creating account..." class="w-full">Create an account</.button_primary>
         </:actions>
       </.simple_form>
     </div>

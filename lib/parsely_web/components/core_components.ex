@@ -237,6 +237,134 @@ defmodule ParselyWeb.CoreComponents do
   end
 
   @doc """
+  Renders a primary button using brand colors.
+
+  ## Examples
+
+      <.button_primary>Save</.button_primary>
+      <.button_primary phx-click="save" class="ml-2">Save</.button_primary>
+  """
+  attr :type, :string, default: nil
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(disabled form name value)
+
+  slot :inner_block, required: true
+
+  def button_primary(assigns) do
+    ~H"""
+    <button
+      type={@type}
+      class={[
+        "phx-submit-loading:opacity-75 rounded-lg bg-mint-deep hover:bg-mint-primary py-2 px-3",
+        "text-sm font-semibold leading-6 text-white active:text-white/80 transition-colors duration-200",
+        @class
+      ]}
+      {@rest}
+    >
+      <%= render_slot(@inner_block) %>
+    </button>
+    """
+  end
+
+  @doc """
+  Renders a secondary button using brand colors.
+
+  ## Examples
+
+      <.button_secondary>Cancel</.button_secondary>
+      <.button_secondary phx-click="cancel" class="ml-2">Cancel</.button_secondary>
+  """
+  attr :type, :string, default: nil
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(disabled form name value)
+
+  slot :inner_block, required: true
+
+  def button_secondary(assigns) do
+    ~H"""
+    <button
+      type={@type}
+      class={[
+        "phx-submit-loading:opacity-75 rounded-lg bg-cool-grey hover:bg-slate-grey py-2 px-3",
+        "text-sm font-semibold leading-6 text-charcoal hover:text-white active:text-white/80 transition-colors duration-200",
+        @class
+      ]}
+      {@rest}
+    >
+      <%= render_slot(@inner_block) %>
+    </button>
+    """
+  end
+
+  @doc """
+  Renders a primary button link using brand colors.
+
+  ## Examples
+
+      <.button_link navigate={~p"/some-path"}>Go to page</.button_link>
+      <.button_link patch={~p"/some-path"} class="ml-2">Go to page</.button_link>
+  """
+  attr :navigate, :string, default: nil
+  attr :patch, :string, default: nil
+  attr :href, :string, default: nil
+  attr :class, :string, default: nil
+  attr :rest, :global
+
+  slot :inner_block, required: true
+
+  def button_link(assigns) do
+    ~H"""
+    <.link
+      navigate={@navigate}
+      patch={@patch}
+      href={@href}
+      class={[
+        "inline-flex items-center rounded-lg bg-mint-deep hover:bg-mint-primary py-2 px-3",
+        "text-sm font-semibold leading-6 text-white active:text-white/80 transition-colors duration-200",
+        @class
+      ]}
+      {@rest}
+    >
+      <%= render_slot(@inner_block) %>
+    </.link>
+    """
+  end
+
+  @doc """
+  Renders a secondary button link using brand colors.
+
+  ## Examples
+
+      <.button_link_secondary navigate={~p"/some-path"}>Cancel</.button_link_secondary>
+      <.button_link_secondary patch={~p"/some-path"} class="ml-2">Back</.button_link_secondary>
+  """
+  attr :navigate, :string, default: nil
+  attr :patch, :string, default: nil
+  attr :href, :string, default: nil
+  attr :class, :string, default: nil
+  attr :rest, :global
+
+  slot :inner_block, required: true
+
+  def button_link_secondary(assigns) do
+    ~H"""
+    <.link
+      navigate={@navigate}
+      patch={@patch}
+      href={@href}
+      class={[
+        "inline-flex items-center rounded-lg bg-cool-grey hover:bg-slate-grey py-2 px-3",
+        "text-sm font-semibold leading-6 text-charcoal hover:text-white active:text-white/80 transition-colors duration-200",
+        @class
+      ]}
+      {@rest}
+    >
+      <%= render_slot(@inner_block) %>
+    </.link>
+    """
+  end
+
+  @doc """
   Renders an input with label and error messages.
 
   A `Phoenix.HTML.FormField` may be passed as argument,

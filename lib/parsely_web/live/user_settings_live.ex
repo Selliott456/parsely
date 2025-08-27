@@ -22,7 +22,7 @@ defmodule ParselyWeb.UserSettingsLive do
           <.input field={@profile_form[:last_name]} type="text" label="Last Name" required />
           <.input field={@profile_form[:date_of_birth]} type="date" label="Date of Birth" required />
           <:actions>
-            <.button phx-disable-with="Updating...">Update Profile</.button>
+            <.button_primary phx-disable-with="Updating...">Update Profile</.button_primary>
           </:actions>
         </.simple_form>
       </div>
@@ -44,7 +44,7 @@ defmodule ParselyWeb.UserSettingsLive do
             required
           />
           <:actions>
-            <.button phx-disable-with="Changing...">Change Email</.button>
+            <.button_primary phx-disable-with="Changing...">Change Email</.button_primary>
           </:actions>
         </.simple_form>
       </div>
@@ -80,7 +80,7 @@ defmodule ParselyWeb.UserSettingsLive do
             required
           />
           <:actions>
-            <.button phx-disable-with="Changing...">Change Password</.button>
+            <.button_primary phx-disable-with="Changing...">Change Password</.button_primary>
           </:actions>
         </.simple_form>
       </div>

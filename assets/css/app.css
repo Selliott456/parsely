@@ -3,3 +3,98 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
+
+/* Root Styles - Brand Colors */
+:root {
+  /* Brand Colors */
+  --color-mint-primary: #9FE2BF;
+  --color-mint-bright: #B7F5D8;
+  --color-mint-deep: #4DBE9F;
+  --color-soft-white: #F9FAFB;
+  --color-warm-white: #FFFFFF;
+  --color-cool-grey: #E5E7EB;
+  --color-charcoal: #2F2F2F;
+  --color-slate-grey: #374151;
+  --color-deep-black: #111827;
+}
+
+/* Base Styles */
+html {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: var(--color-charcoal);
+  background-color: var(--color-soft-white);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--color-charcoal);
+  background-color: var(--color-soft-white);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-deep-black);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Links */
+a {
+  color: var(--color-mint-deep);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-mint-primary);
+}
+
+/* Focus States */
+*:focus {
+  outline: 2px solid var(--color-mint-primary);
+  outline-offset: 2px;
+}
+
+/* Button Base Styles */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Form Elements */
+input, textarea, select {
+  font-family: inherit;
+  color: var(--color-charcoal);
+  border: 1px solid var(--color-cool-grey);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-mint-primary);
+  box-shadow: 0 0 0 3px rgba(159, 226, 191, 0.1);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-mint-bright);
+  color: var(--color-deep-black);
+}

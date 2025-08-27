@@ -70,20 +70,20 @@ defmodule ParselyWeb.TwoFactorAuthLive do
         />
 
         <:actions>
-          <.button phx-disable-with="Verifying..." class="w-full">
+          <.button_primary phx-disable-with="Verifying..." class="w-full">
             Verify Device
-          </.button>
+          </.button_primary>
         </:actions>
       </.simple_form>
 
       <div class="mt-6 text-center">
-        <button
+        <.button_secondary
           type="button"
           phx-click="resend"
-          class="text-sm text-zinc-600 hover:text-zinc-900"
+          class="text-sm"
         >
           Resend Code
-        </button>
+        </.button_secondary>
       </div>
 
       <%= if @error_message do %>

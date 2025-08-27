@@ -182,23 +182,23 @@ defmodule ParselyWeb.ScanCardLive do
             </div>
 
             <div class="space-y-4 relative z-10">
-              <button
+              <.button_primary
                 type="button"
                 id="capture-photo-btn"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 relative z-10"
+                class="inline-flex items-center relative z-10"
               >
                 <.icon name="hero-camera" class="h-4 w-4 mr-2" />
                 Capture Photo
-              </button>
+              </.button_primary>
 
-              <button
+              <.button_secondary
                 type="button"
                 phx-click="retake-photo"
-                class="inline-flex items-center px-4 py-2 border border-zinc-300 text-sm font-medium rounded-md text-zinc-700 bg-white hover:bg-zinc-50 relative z-10"
+                class="inline-flex items-center relative z-10"
               >
                 <.icon name="hero-arrow-left" class="h-4 w-4 mr-2" />
                 Back
-              </button>
+              </.button_secondary>
             </div>
           </div>
         </div>
@@ -220,13 +220,13 @@ defmodule ParselyWeb.ScanCardLive do
               <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
             <% end %>
             <div class="mt-4">
-              <button
+              <.button_secondary
                 type="button"
                 phx-click="retake-photo"
-                class="text-sm text-zinc-600 hover:text-zinc-900"
+                class="text-sm"
               >
                 Retake Photo
-              </button>
+              </.button_secondary>
             </div>
           </div>
         </div>
@@ -250,13 +250,13 @@ defmodule ParselyWeb.ScanCardLive do
           <.input field={@form[:notes]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
 
           <:actions>
-            <button
+            <.button_primary
               type="submit"
-              class={"px-4 py-2 text-sm font-medium rounded-md #{if @duplicate_error, do: "bg-gray-300 text-gray-500 cursor-not-allowed", else: "bg-blue-600 text-white hover:bg-blue-700"}"}
+              class={if @duplicate_error, do: "opacity-50 cursor-not-allowed"}
               disabled={@duplicate_error != nil}
             >
               Save Business Card
-            </button>
+            </.button_primary>
           </:actions>
         </.simple_form>
       </div>

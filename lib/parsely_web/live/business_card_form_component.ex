@@ -52,14 +52,14 @@ defmodule ParselyWeb.BusinessCardFormComponent do
                 <div class="mt-4">
                   <img src={@photo_data} alt="Captured business card" class="mx-auto max-w-xs rounded-lg shadow-sm" />
                   <div class="mt-2 text-center">
-                    <button
+                    <.button_secondary
                       type="button"
                       phx-click="retake-photo"
                       phx-target={@myself}
-                      class="text-sm text-zinc-600 hover:text-zinc-900"
+                      class="text-sm"
                     >
                       Retake Photo
-                    </button>
+                    </.button_secondary>
                   </div>
                 </div>
               <% end %>
@@ -94,10 +94,10 @@ defmodule ParselyWeb.BusinessCardFormComponent do
         </div>
 
         <:actions>
-          <.button phx-disable-with="Saving...">Save Business Card</.button>
-          <.link patch={~p"/business-cards"} class="button">
+          <.button_primary phx-disable-with="Saving...">Save Business Card</.button_primary>
+          <.button_link_secondary patch={~p"/business-cards"}>
             Cancel
-          </.link>
+          </.button_link_secondary>
         </:actions>
       </.simple_form>
     </div>

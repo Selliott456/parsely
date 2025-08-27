@@ -147,10 +147,10 @@ defmodule ParselyWeb.BusinessCardLive do
           <.header>
             Business Card Details
             <:actions>
-              <.link navigate={~p"/business-cards"} class="button">
+              <.button_link_secondary navigate={~p"/business-cards"}>
                 <.icon name="hero-arrow-left" class="h-4 w-4" />
                 Back to Cards
-              </.link>
+              </.button_link_secondary>
             </:actions>
           </.header>
 
@@ -219,7 +219,7 @@ defmodule ParselyWeb.BusinessCardLive do
                       rows="3"
                     />
                     <:actions>
-                      <.button>Add Note</.button>
+                      <.button_primary>Add Note</.button_primary>
                     </:actions>
                   </.simple_form>
                 </div>
@@ -232,10 +232,10 @@ defmodule ParselyWeb.BusinessCardLive do
           <.header>
             Business Cards
             <:actions>
-              <.link patch={~p"/business-cards/new"} class="button">
+              <.button_link patch={~p"/business-cards/new"}>
                 <.icon name="hero-plus" class="h-4 w-4" />
                 Add Card
-              </.link>
+              </.button_link>
             </:actions>
           </.header>
 
@@ -257,13 +257,13 @@ defmodule ParselyWeb.BusinessCardLive do
                 </form>
               </div>
               <%= if @search_query != "" do %>
-                <button
+                <.button_secondary
                   phx-click="clear-search"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  class="inline-flex items-center"
                 >
                   <.icon name="hero-x-mark" class="h-4 w-4 mr-1" />
                   Clear
-                </button>
+                </.button_secondary>
               <% end %>
             </div>
           </div>
@@ -323,7 +323,7 @@ defmodule ParselyWeb.BusinessCardLive do
                       phx-click="delete"
                       phx-value-id={business_card.id}
                       data-confirm="Are you sure you want to delete this business card?"
-                      class="text-red-400 hover:text-red-500"
+                      class="text-red-400 hover:text-red-500 p-1 rounded"
                     >
                       <.icon name="hero-trash" class="h-4 w-4" />
                     </button>
@@ -343,10 +343,10 @@ defmodule ParselyWeb.BusinessCardLive do
                 Get started by adding your first business card.
               </p>
               <div class="mt-6">
-                <.link patch={~p"/business-cards/new"} class="button">
+                <.button_link patch={~p"/business-cards/new"}>
                   <.icon name="hero-plus" class="h-4 w-4" />
                   Add Card
-                </.link>
+                </.button_link>
               </div>
             </div>
           <% end %>
