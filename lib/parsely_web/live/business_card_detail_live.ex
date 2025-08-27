@@ -21,15 +21,15 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-4xl">
-      <div class="mb-6">
-        <.button_link_secondary navigate={~p"/business-cards"} class="mb-4">
-          ← Back to Cards
-        </.button_link_secondary>
-
+    <div class="mx-auto max-w-4xl my-8">
+      <div class="mb-6 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-charcoal">
           <%= @business_card.name || "Unnamed Contact" %>
         </h1>
+
+        <.button_link_secondary navigate={~p"/business-cards"}>
+          ← Back to Cards
+        </.button_link_secondary>
       </div>
 
       <div class="bg-white rounded-lg border border-zinc-200 p-8">
@@ -89,17 +89,30 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
           <%= if @business_card.notes && length(@business_card.notes) > 0 do %>
             <div class="space-y-4 mb-6">
-              <%= for note <- @business_card.notes do %>
+              <%= for {note, index} <- Enum.with_index(@business_card.notes) do %>
                 <div class="bg-zinc-50 rounded-lg p-4">
-                  <p class="text-charcoal whitespace-pre-wrap"><%= note["note"] %></p>
-                  <p class="text-sm text-zinc-500 mt-2">
-                    <%= case DateTime.from_iso8601(note["date"]) do %>
-                      <% {:ok, datetime, _} -> %>
-                        <%= Calendar.strftime(datetime, "%B %d, %Y at %I:%M %p") %>
-                      <% _ -> %>
-                        <%= note["date"] %>
-                    <% end %>
-                  </p>
+                  <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                      <p class="text-charcoal whitespace-pre-wrap"><%= note["note"] %></p>
+                      <p class="text-sm text-mint-primary mt-2">
+                        <%= case DateTime.from_iso8601(note["date"]) do %>
+                          <% {:ok, datetime, _} -> %>
+                            <%= Calendar.strftime(datetime, "%B %d, %Y") %>
+                          <% _ -> %>
+                            <%= note["date"] %>
+                        <% end %>
+                      </p>
+                    </div>
+                    <button
+                      phx-click="delete-note"
+                      phx-value-index={index}
+                      class="bg-cool-grey hover:bg-slate-grey text-warm-white p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 ml-4 flex-shrink-0"
+                    >
+                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 3v1H4v2h1v13a2 2 0 002 2h10a2 2 0 002-2V6h1V4h-5V3H9zM7 6h10v13H7V6zm2 2v9h2V8H9zm4 0v9h2V8h-2z"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               <% end %>
             </div>
@@ -167,6 +180,27 @@ defmodule ParselyWeb.BusinessCardDetailLive do
       nil -> [new_note]
       notes when is_list(notes) -> [new_note | notes]
       _ -> [new_note]
+    end
+
+    # Update the business card
+    case BusinessCards.update_business_card(business_card, %{notes: updated_notes}) do
+      {:ok, updated_card} ->
+        {:noreply, assign(socket, business_card: updated_card)}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("delete-note", %{"index" => index}, socket) do
+    business_card = socket.assigns.business_card
+    index = String.to_integer(index)
+
+    # Remove the note at the specified index
+    updated_notes = case business_card.notes do
+      nil -> []
+      notes when is_list(notes) -> List.delete_at(notes, index)
+      _ -> []
     end
 
     # Update the business card
