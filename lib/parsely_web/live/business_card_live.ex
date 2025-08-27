@@ -232,7 +232,9 @@ defmodule ParselyWeb.BusinessCardLive do
           <.header>
             <:actions>
               <.button_link patch={~p"/scan-card"}>
-                <.icon name="hero-plus" class="h-4 w-4" />
+                <svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
                 Add Card
               </.button_link>
             </:actions>
@@ -244,8 +246,8 @@ defmodule ParselyWeb.BusinessCardLive do
               <div class="flex-1 max-w-md">
                 <form phx-change="search" class="relative">
                   <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                   </div>
                   <input
@@ -278,16 +280,12 @@ defmodule ParselyWeb.BusinessCardLive do
                   <div class="p-6">
                     <div class="flex items-center">
                       <div class="flex-shrink-0">
-                        <div class="h-10 w-10 rounded-full bg-zinc-300 flex items-center justify-center">
-                          <span class="text-sm font-medium text-zinc-700">
-                            <%= String.first(business_card.name || "?") %>
-                          </span>
-                        </div>
+                                              <img src={~p"/images/business-card.png"} alt="Business Card" class="h-10 w-10 object-cover" />
                       </div>
                       <div class="ml-4 flex-1 min-w-0">
-                        <p class="text-sm font-medium text-zinc-900 truncate">
-                          <%= business_card.name %>
-                        </p>
+                                              <h3 class="text-lg font-semibold text-charcoal truncate uppercase">
+                        <%= business_card.name %>
+                      </h3>
                         <p class="text-sm text-zinc-500 truncate">
                           <%= business_card.company %>
                         </p>
@@ -311,23 +309,19 @@ defmodule ParselyWeb.BusinessCardLive do
                       </div>
                     <% end %>
 
-                    <div class="mt-4 flex justify-between items-center">
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Physical
-                      </span>
-
-                      <button
-                        phx-click="delete"
-                        phx-value-id={business_card.id}
-                        data-confirm="Are you sure you want to delete this business card?"
-                        class="bg-mint-deep hover:bg-mint-primary text-white p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105"
-                        onclick="event.stopPropagation();"
-                      >
-                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                        </svg>
-                      </button>
-                    </div>
+                                      <div class="mt-4 flex justify-end">
+                    <button
+                      phx-click="delete"
+                      phx-value-id={business_card.id}
+                      data-confirm="Are you sure you want to delete this business card?"
+                      class="bg-cool-grey hover:bg-slate-grey text-warm-white p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                      onclick="event.stopPropagation();"
+                    >
+                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 3v1H4v2h1v13a2 2 0 002 2h10a2 2 0 002-2V6h1V4h-5V3H9zM7 6h10v13H7V6zm2 2v9h2V8H9zm4 0v9h2V8h-2z"/>
+                      </svg>
+                    </button>
+                  </div>
                   </div>
                 </div>
               </.link>
@@ -347,7 +341,9 @@ defmodule ParselyWeb.BusinessCardLive do
               </p>
               <div class="mt-6">
                 <.button_link patch={~p"/scan-card"}>
-                  <.icon name="hero-plus" class="h-4 w-4" />
+                  <svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                  </svg>
                   Add Card
                 </.button_link>
               </div>
