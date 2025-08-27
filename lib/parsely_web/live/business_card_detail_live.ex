@@ -84,14 +84,46 @@ defmodule ParselyWeb.BusinessCardDetailLive do
         </div>
 
         <!-- Notes -->
-        <%= if @business_card.notes && @business_card.notes != "" do %>
-          <div class="mt-8 pt-8 border-t border-zinc-200">
-            <h2 class="text-xl font-semibold text-charcoal mb-4">Notes</h2>
-            <div class="bg-zinc-50 rounded-lg p-4">
-              <p class="text-charcoal whitespace-pre-wrap"><%= @business_card.notes %></p>
+        <div class="mt-8 pt-8 border-t border-zinc-200">
+          <h2 class="text-xl font-semibold text-charcoal mb-4">Notes</h2>
+
+          <%= if @business_card.notes && length(@business_card.notes) > 0 do %>
+            <div class="space-y-4 mb-6">
+              <%= for note <- @business_card.notes do %>
+                <div class="bg-zinc-50 rounded-lg p-4">
+                  <p class="text-charcoal whitespace-pre-wrap"><%= note["note"] %></p>
+                  <p class="text-sm text-zinc-500 mt-2">
+                    <%= case DateTime.from_iso8601(note["date"]) do %>
+                      <% {:ok, datetime, _} -> %>
+                        <%= Calendar.strftime(datetime, "%B %d, %Y at %I:%M %p") %>
+                      <% _ -> %>
+                        <%= note["date"] %>
+                    <% end %>
+                  </p>
+                </div>
+              <% end %>
             </div>
+          <% end %>
+
+          <!-- Add Note Form -->
+          <div class="bg-white border border-zinc-200 rounded-lg p-4">
+            <form phx-submit="add-note" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-zinc-600 mb-2">Add Note</label>
+                <textarea
+                  name="note[text]"
+                  placeholder="Enter a note about this contact..."
+                  rows="3"
+                  class="block w-full border border-zinc-300 rounded-md px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-mint-primary focus:border-mint-primary"
+                  required
+                ></textarea>
+              </div>
+              <div class="flex justify-end">
+                <.button_primary type="submit">Add Note</.button_primary>
+              </div>
+            </form>
           </div>
-        <% end %>
+        </div>
 
         <!-- Card Metadata -->
         <div class="mt-8 pt-8 border-t border-zinc-200">
@@ -119,6 +151,32 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
   def handle_event("edit_card", _params, socket) do
     {:navigate, socket, to: ~p"/business-cards/#{socket.assigns.business_card.id}/edit"}
+  end
+
+  def handle_event("add-note", %{"note" => %{"text" => note_text}}, socket) do
+    business_card = socket.assigns.business_card
+
+    # Create new note with current timestamp
+    new_note = %{
+      "note" => note_text,
+      "date" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    # Add note to existing notes or create new notes array
+    updated_notes = case business_card.notes do
+      nil -> [new_note]
+      notes when is_list(notes) -> [new_note | notes]
+      _ -> [new_note]
+    end
+
+    # Update the business card
+    case BusinessCards.update_business_card(business_card, %{notes: updated_notes}) do
+      {:ok, updated_card} ->
+        {:noreply, assign(socket, business_card: updated_card)}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("delete_card", _params, socket) do
