@@ -18,21 +18,35 @@ defmodule ParselyWeb.DashboardLive do
 
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-7xl">
-      <div class="mb-8">
+    <div class="min-h-screen">
+              <div class="p-4 flex items-center justify-center">
+          <div class="flex flex-col space-y-4 items-center justify-center w-full h-full">
+                  <!-- Scan Business Card -->
+        <.link navigate={~p"/scan-card"} class="w-[70vw] max-w-md bg-mint-deep rounded-lg shadow-lg border border-mint-primary hover:shadow-xl transition-shadow duration-200 p-8 flex flex-col items-center justify-center text-center min-h-[40vh]">
+            <div class="flex flex-col items-center space-y-6">
+              <svg class="h-16 w-16 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+                <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+              </svg>
+              <div>
+                <h3 class="text-2xl font-semibold text-white">Scan Business Card</h3>
+                <p class="text-mint-bright mt-2 text-lg">Take a photo to extract contact information</p>
+              </div>
+            </div>
+          </.link>
 
-        <div class="flex space-x-4">
-          <!-- Scan Business Card -->
-          <.button_link navigate={~p"/scan-card"} class="inline-flex items-center">
-            <.icon name="hero-camera" class="h-4 w-4 mr-2" />
-            Scan Business Card
-          </.button_link>
-
-          <!-- View Business Cards -->
-          <.button_link_secondary navigate={~p"/business-cards"} class="inline-flex items-center">
-            <.icon name="hero-eye" class="h-4 w-4 mr-2" />
-            View Business Cards
-          </.button_link_secondary>
+                  <!-- View Business Cards -->
+        <.link navigate={~p"/business-cards"} class="w-[70vw] max-w-md bg-charcoal rounded-lg shadow-lg border border-slate-grey hover:shadow-xl transition-shadow duration-200 p-8 flex flex-col items-center justify-center text-center min-h-[40vh]">
+            <div class="flex flex-col items-center space-y-6">
+              <svg class="h-16 w-16 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+              </svg>
+              <div>
+                <h3 class="text-2xl font-semibold text-white">View Business Cards</h3>
+                <p class="text-cool-grey mt-2 text-lg">Browse and manage your contacts</p>
+              </div>
+            </div>
+          </.link>
         </div>
       </div>
     </div>
