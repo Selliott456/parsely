@@ -232,7 +232,7 @@ defmodule ParselyWeb.BusinessCardLive do
           <.header>
             Business Cards
             <:actions>
-              <.button_link patch={~p"/business-cards/new"}>
+              <.button_link patch={~p"/scan-card"}>
                 <.icon name="hero-plus" class="h-4 w-4" />
                 Add Card
               </.button_link>
@@ -343,7 +343,7 @@ defmodule ParselyWeb.BusinessCardLive do
                 Get started by adding your first business card.
               </p>
               <div class="mt-6">
-                <.button_link patch={~p"/business-cards/new"}>
+                <.button_link patch={~p"/scan-card"}>
                   <.icon name="hero-plus" class="h-4 w-4" />
                   Add Card
                 </.button_link>
