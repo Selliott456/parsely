@@ -275,11 +275,11 @@ defmodule ParselyWeb.BusinessCardLive do
             </div>
           </div>
 
-          <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
             <%= for business_card <- @business_cards do %>
-              <.link navigate={~p"/business-cards/#{business_card.id}"} class="block">
-                <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
-                  <div class="p-6">
+              <.link navigate={~p"/business-cards/#{business_card.id}"} class="block h-full">
+                <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer h-full flex flex-col min-h-[12rem]">
+                  <div class="p-6 flex-1 flex flex-col">
                     <div class="flex items-center">
                       <div class="flex-shrink-0">
                                               <img src={~p"/images/business-card.png"} alt="Business Card" class="h-10 w-10 object-cover" />
@@ -311,7 +311,7 @@ defmodule ParselyWeb.BusinessCardLive do
                       </div>
                     <% end %>
 
-                                      <div class="mt-4 flex justify-end">
+                    <div class="mt-auto pt-4 flex justify-end">
                     <button
                       phx-click="delete"
                       phx-value-id={business_card.id}
