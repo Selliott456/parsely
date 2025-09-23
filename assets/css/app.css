@@ -24,6 +24,8 @@ html {
   line-height: 1.6;
   color: var(--color-charcoal);
   background-color: var(--color-soft-white);
+  /* Ensure mobile viewport height correctness */
+  height: 100%;
 }
 
 body {
@@ -31,6 +33,8 @@ body {
   padding: 0;
   color: var(--color-charcoal);
   background-color: var(--color-soft-white);
+  min-height: 100vh;
+  min-height: 100svh; /* modern small viewport height for mobile */
 }
 
 /* Typography */
@@ -103,4 +107,14 @@ input:focus, textarea:focus, select:focus {
 ::selection {
   background-color: var(--color-mint-bright);
   color: var(--color-deep-black);
+}
+
+/* iOS Safari 100vh fix: lock viewport unit to dynamic visual viewport */
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+  html {
+    height: -webkit-fill-available;
+  }
 }
