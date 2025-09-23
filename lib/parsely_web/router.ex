@@ -17,6 +17,10 @@ defmodule ParselyWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :require_trusted_device do
+    plug ParselyWeb.Plugs.RequireTrustedDevice
+  end
+
   scope "/", ParselyWeb do
     pipe_through :browser
 
@@ -61,15 +65,26 @@ defmodule ParselyWeb.Router do
     post "/users/log_in", UserSessionController, :create
   end
 
+  # 2FA challenge route - needs to be accessible without trusted device check
   scope "/", ParselyWeb do
     pipe_through [:browser, :require_authenticated_user]
+
+    live_session :require_authenticated_user_2fa,
+      on_mount: [{ParselyWeb.UserAuth, :ensure_authenticated}] do
+      live "/2fa/challenge", TwoFactorAuthLive, :challenge
+    end
+
+    get "/auth/trusted-device", TrustedDeviceController, :set_trusted_device
+  end
+
+  scope "/", ParselyWeb do
+    pipe_through [:browser, :require_authenticated_user, :require_trusted_device]
 
     live_session :require_authenticated_user,
       on_mount: [{ParselyWeb.UserAuth, :ensure_authenticated}] do
       live "/dashboard", DashboardLive, :index
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
-      live "/2fa/challenge", TwoFactorAuthLive, :challenge
       live "/business-cards", BusinessCardLive, :index
       live "/business-cards/new", BusinessCardLive, :new
       live "/business-cards/:id", BusinessCardDetailLive, :show

@@ -404,6 +404,22 @@ defmodule Parsely.Accounts do
   end
 
   @doc """
+  Creates a trusted device for a user from LiveView (without connection info).
+  """
+  def create_trusted_device_from_liveview(user, token) do
+    token_hash = :crypto.hash(:sha256, token)
+
+    %TrustedDevice{}
+    |> TrustedDevice.create_changeset(%{
+      user_id: user.id,
+      token_hash: token_hash,
+      user_agent: "LiveView",
+      ip: "127.0.0.1"
+    })
+    |> Repo.insert()
+  end
+
+  @doc """
   Checks if a device is trusted for a user.
   """
   def device_trusted?(user, token, conn) do
@@ -412,7 +428,7 @@ defmodule Parsely.Accounts do
 
     TrustedDevice
     |> where(user_id: ^user.id, token_hash: ^token_hash)
-    |> where([td], td.expires_at > ^NaiveDateTime.utc_now())
+    |> where([td], td.expires_at > ^DateTime.utc_now())
     |> Repo.exists?()
   end
 
@@ -424,7 +440,7 @@ defmodule Parsely.Accounts do
 
     TrustedDevice
     |> where(user_id: ^user.id, token_hash: ^token_hash)
-    |> Repo.update_all(set: [last_seen_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:microsecond)])
+    |> Repo.update_all(set: [last_seen_at: DateTime.utc_now()])
   end
 
   @doc """

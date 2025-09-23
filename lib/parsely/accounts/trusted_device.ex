@@ -23,11 +23,14 @@ defmodule Parsely.Accounts.TrustedDevice do
   end
 
   def create_changeset(trusted_device, attrs) do
+    now = DateTime.utc_now()
+    expires_at = DateTime.add(now, 60 * 60 * 24 * 30, :second)
+
     trusted_device
     |> cast(attrs, [:token_hash, :user_agent, :ip, :user_id])
     |> validate_required([:token_hash, :user_id])
-    |> put_change(:last_seen_at, NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:microsecond))
-    |> put_change(:expires_at, NaiveDateTime.utc_now() |> NaiveDateTime.add(60 * 60 * 24 * 30, :second) |> NaiveDateTime.truncate(:microsecond))
+    |> put_change(:last_seen_at, now)
+    |> put_change(:expires_at, expires_at)
     |> foreign_key_constraint(:user_id)
   end
 end

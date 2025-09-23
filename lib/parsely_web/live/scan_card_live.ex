@@ -19,23 +19,7 @@ defmodule ParselyWeb.ScanCardLive do
     {:ok, socket}
   end
 
-  def handle_event("photo-captured", %{"data" => photo_data}, socket) do
-    IO.puts("photo-captured event: starting image save + OCR")
 
-    # Hide camera, add photo data, and show loading state immediately
-    socket =
-      socket
-      |> assign(:photo_data, photo_data)
-      |> assign(:show_camera, false)
-      |> assign(:processing_ocr, true)
-
-    IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}, processing_ocr=#{socket.assigns.processing_ocr}")
-
-    # Process OCR immediately (not with delay)
-    Process.send(self(), {:process_ocr, photo_data}, [])
-
-    {:noreply, socket}
-  end
 
   def handle_info({:process_ocr, photo_data}, socket) do
     IO.puts("=== PROCESSING OCR ===")
@@ -75,6 +59,24 @@ defmodule ParselyWeb.ScanCardLive do
          socket
          |> put_flash(:error, "Failed to save image: #{reason}")}
     end
+  end
+
+  def handle_event("photo-captured", %{"data" => photo_data}, socket) do
+    IO.puts("photo-captured event: starting image save + OCR")
+
+    # Hide camera, add photo data, and show loading state immediately
+    socket =
+      socket
+      |> assign(:photo_data, photo_data)
+      |> assign(:show_camera, false)
+      |> assign(:processing_ocr, true)
+
+    IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}, processing_ocr=#{socket.assigns.processing_ocr}")
+
+    # Process OCR immediately (not with delay)
+    Process.send(self(), {:process_ocr, photo_data}, [])
+
+    {:noreply, socket}
   end
 
   def handle_event("retake-photo", _params, socket) do

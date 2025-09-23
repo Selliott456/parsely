@@ -76,4 +76,24 @@ defmodule Parsely.Accounts.UserNotifier do
     ==============================
     """)
   end
+
+  @doc """
+  Deliver 2FA verification code.
+  """
+  def deliver_2fa_code(user, code) do
+    deliver(user.email, "Your 2FA Verification Code", """
+
+    ==============================
+
+    Hi #{user.email},
+
+    Your verification code is: #{code}
+
+    This code will expire in 5 minutes.
+
+    If you didn't request this, please ignore this email.
+
+    ==============================
+    """)
+  end
 end
