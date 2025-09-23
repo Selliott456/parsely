@@ -104,17 +104,19 @@ defmodule Parsely.OCRService do
     IO.puts("Clean text:")
     IO.puts(clean_text)
 
-    # Extract the three main fields
+    # Extract all fields
     email = find_email(clean_text)
     phone = find_phone(clean_text)
     name = find_name(clean_text, email, phone)
+    company = find_company(clean_text, name, email, phone)
+    position = find_position(clean_text, name, email, phone, company)
 
     result = %{
       name: name,
       email: email,
       phone: phone,
-      company: nil, # Not focusing on this for now
-      position: nil, # Not focusing on this for now
+      company: company,
+      position: position,
       raw_text: clean_text
     }
 
@@ -122,6 +124,8 @@ defmodule Parsely.OCRService do
     IO.puts("Name: #{name}")
     IO.puts("Email: #{email}")
     IO.puts("Phone: #{phone}")
+    IO.puts("Company: #{company}")
+    IO.puts("Position: #{position}")
 
     {:ok, result}
   end
@@ -168,10 +172,12 @@ defmodule Parsely.OCRService do
   end
 
   defp find_name(text, email, phone) do
-    # Split into lines and look for name
-    lines = String.split(text, "\n")
-    |> Enum.map(&String.trim/1)
-    |> Enum.filter(fn line -> String.length(line) > 0 end)
+    # Split into lines and normalize
+    lines =
+      text
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
 
     IO.puts("=== ANALYZING LINES FOR NAME ===")
     Enum.with_index(lines, 1)
@@ -179,36 +185,310 @@ defmodule Parsely.OCRService do
       IO.puts("Line #{index}: '#{line}'")
     end)
 
-    # Look for name in first few lines
-    name_candidates = lines
-      |> Enum.take(5)
-      |> Enum.filter(fn line ->
-        line = String.trim(line)
-        String.length(line) > 2 and
-        String.length(line) < 50 and
-        # Must contain letters
-        Regex.match?(~r/[A-Za-z]/, line) and
-        # Not an email line
-        line != email and
-        !String.contains?(line, "@") and
-        # Not a phone line
-        line != phone and
-        !Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) and
-        # Not all digits
-        !Regex.match?(~r/^\d+$/, line)
-      end)
+    # Common words that indicate titles/companies we should skip when guessing a name
+    role_or_company_keywords = ~w(
+      engineer developer manager director founder cofounder chief officer
+      marketing sales product design designer accounting consultant analyst
+      software hardware solutions technologies technology tech ltd limited inc llc corp corporation company co gmbh srl spa bv sa plc university college school
+      department division team
+    )
 
-    case name_candidates do
-      [name | _] ->
-        IO.puts("Found name: '#{name}'")
-        String.trim(name)
+    contains_role_or_company? = fn line ->
+      down = String.downcase(line)
+      Enum.any?(role_or_company_keywords, &String.contains?(down, &1))
+    end
+
+    # Helper predicates for scoring
+    has_letters? = fn line -> Regex.match?(~r/[A-Za-z]/, line) end
+    has_digits? = fn line -> Regex.match?(~r/\d/, line) end
+    is_email_line? = fn line -> String.contains?(line, "@") end
+    is_phone_line? = fn line -> Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) end
+    contains_url? = fn line ->
+      down = String.downcase(line)
+      String.contains?(down, "www") or String.contains?(down, "http")
+    end
+    looks_like_address? = fn line ->
+      down = String.downcase(line)
+      Regex.match?(~r/\d/, line) or String.contains?(down, "st.") or String.contains?(down, "street") or String.contains?(down, "ave") or String.contains?(down, "road") or String.contains?(down, ",")
+    end
+
+    # Prefer 2-3 tokens, capitalized words
+    name_like_tokens? = fn line ->
+      tokens =
+        line
+        |> String.replace(~r/[^A-Za-z\s\-'.]/, "")
+        |> String.split(~r/\s+/, trim: true)
+
+      length(tokens) in 2..3 and Enum.all?(tokens, fn t ->
+        # Allow initials like "J." or capitalized words like "John"
+        Regex.match?(~r/^[A-Z][a-z]+$|^[A-Z]\.$/, t)
+      end)
+    end
+
+    # Score each line as a name candidate (prefer early lines, penalize URLs/addresses)
+    scored_candidates =
+      lines
+      |> Enum.take(7)
+      |> Enum.with_index(1)
+      |> Enum.reject(fn {line, _idx} ->
+        is_email_line?.(line) or is_phone_line?.(line) or not has_letters?.(line) or contains_role_or_company?.(line)
+      end)
+      |> Enum.map(fn {line, idx} ->
+        base = 0
+        base = if name_like_tokens?.(line), do: base + 5, else: base
+        base = if not has_digits?.(line), do: base + 2, else: base
+        base = if String.length(line) in 3..40, do: base + 1, else: base
+        # Strongly prefer top lines on the card
+        base = if idx <= 2, do: base + 4, else: base
+        # Penalize things that look like addresses/URLs
+        base = if contains_url?.(line), do: base - 5, else: base
+        base = if looks_like_address?.(line), do: base - 4, else: base
+        {base, line, idx}
+      end)
+      |> Enum.sort_by(fn {score, _line, _idx} -> -score end)
+
+    case scored_candidates do
+      [{top_score, best_line, best_idx} | _] when top_score >= 3 ->
+        IO.puts("Found name (scored #{top_score}, idx #{best_idx}): '#{best_line}'")
+        String.trim(best_line)
+
       _ ->
-        IO.puts("No name found")
+        IO.puts("No high-confidence name candidate found; attempting email-based fallback")
+        # Fallback from email local-part: john.doe -> John Doe
+        with true <- is_binary(email),
+             [local | _] <- String.split(email, "@"),
+             parts when parts != [] <- String.split(local, ~r/[._-]+/, trim: true) do
+          candidate =
+            parts
+            |> Enum.map(&String.capitalize/1)
+            |> Enum.join(" ")
+
+          if candidate != "" do
+            IO.puts("Inferred name from email: '#{candidate}'")
+            candidate
+          else
+            IO.puts("Email-based fallback empty; returning nil")
+            nil
+          end
+        else
+          _ ->
+            # Final fallback: pick first line that looks most like a name even if low score
+            weak =
+              lines
+              |> Enum.reject(&(is_email_line?.(&1) or is_phone_line?.(&1) or contains_role_or_company?.(&1)))
+              |> Enum.find(name_like_tokens?)
+
+            if weak do
+              IO.puts("Using weak name fallback: '#{weak}'")
+              String.trim(weak)
+            else
+              IO.puts("No name found")
+              nil
+            end
+        end
+    end
+  end
+
+  defp find_company(text, name, email, phone) do
+    IO.puts("=== FINDING COMPANY ===")
+
+    # Split into lines and normalize
+    lines =
+      text
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    IO.puts("All lines for company analysis:")
+    Enum.with_index(lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Line #{index}: '#{line}'")
+    end)
+
+    # Common company indicators
+    company_indicators = ~w(
+      inc ltd limited corp corporation company co gmbh srl spa bv sa plc
+      technologies technology tech solutions systems group international
+      university college school institute foundation
+    )
+
+    # Helper predicates
+    has_letters? = fn line -> Regex.match?(~r/[A-Za-z]/, line) end
+    is_email_line? = fn line -> String.contains?(line, "@") end
+    is_phone_line? = fn line -> Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) end
+    is_name_line? = fn line -> line == name end
+    is_urlish? = fn line ->
+      down = String.downcase(line)
+      String.contains?(down, "www") or String.contains?(down, "http")
+    end
+    # Reuse a minimal set of position keywords to avoid picking job title as company
+    position_keywords_for_exclusion = ~w(
+      officer manager director engineer developer specialist coordinator supervisor lead senior junior principal
+      president vice ceo cto cfo coo vp executive ambassador consul attache attaché secretary counselor
+      commissioner
+    )
+    is_position_like? = fn line ->
+      down = String.downcase(line)
+      Enum.any?(position_keywords_for_exclusion, &String.contains?(down, &1))
+    end
+
+    IO.puts("Filtering out email, phone, name lines...")
+    filtered_lines = lines
+    |> Enum.reject(fn line ->
+      is_email_line?.(line) or is_phone_line?.(line) or is_name_line?.(line) or not has_letters?.(line)
+    end)
+
+    IO.puts("Remaining lines after filtering:")
+    Enum.with_index(filtered_lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Filtered line #{index}: '#{line}'")
+    end)
+
+    # Look for lines that contain company indicators or look like company names
+    company_candidates =
+      filtered_lines
+      |> Enum.map(fn line ->
+        down = String.downcase(line)
+        contains_indicators = Enum.any?(company_indicators, &String.contains?(down, &1))
+        looks_like_company = Regex.match?(~r/^[A-Z][A-Za-z\s&.-]{2,50}$/, line) and
+                              length(String.split(line, ~r/\s+/, trim: true)) in 1..4
+        person_like = Regex.match?(~r/^[A-Z][A-Za-z\-']+\s+[A-Z][A-Za-z\-']+$/, line)
+        url_like = is_urlish?.(line)
+        position_like = is_position_like?.(line)
+
+        IO.puts("  Analyzing line: '#{line}'")
+        IO.puts("    Contains indicators: #{contains_indicators}")
+        IO.puts("    Looks like company: #{looks_like_company}")
+        IO.puts("    URL-like: #{url_like}")
+        IO.puts("    Person-like: #{person_like}")
+        IO.puts("    Position-like: #{position_like}")
+
+        # Score: prioritize explicit indicators, de-prioritize person/url/position lines
+        score = 0
+        score = if contains_indicators, do: score + 5, else: score
+        score = if looks_like_company, do: score + 1, else: score
+        score = if person_like, do: score - 4, else: score
+        score = if url_like, do: score - 5, else: score
+        score = if position_like, do: score - 4, else: score
+
+        {score, line}
+      end)
+      |> Enum.filter(fn {score, _line} -> score > 0 end)
+      |> Enum.sort_by(fn {score, _line} -> -score end)
+      |> Enum.map(fn {_score, line} -> line end)
+
+    IO.puts("Company candidates found: #{length(company_candidates)}")
+    Enum.with_index(company_candidates, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Candidate #{index}: '#{line}'")
+    end)
+
+    case company_candidates do
+      [company | _] ->
+        IO.puts("Found company: '#{company}'")
+        String.trim(company)
+      _ ->
+        IO.puts("No company found")
         nil
     end
   end
 
+  defp find_position(text, name, email, phone, company) do
+    IO.puts("=== FINDING POSITION ===")
 
+    # Split into lines and normalize
+    lines =
+      text
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    IO.puts("All lines for position analysis:")
+    Enum.with_index(lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Line #{index}: '#{line}'")
+    end)
+
+    # Common job titles/positions
+    position_keywords = ~w(
+      engineer developer manager director founder cofounder chief officer
+      marketing sales product design designer accounting consultant analyst
+      specialist coordinator supervisor lead senior junior principal
+      president vice ceo cto cfo coo vp executive
+      # Embassy and diplomatic positions
+      ambassador consul consul general deputy consul
+      press attache cultural attache commercial attache
+      first secretary second secretary third secretary
+      attaché attaché attaché attaché
+      minister counselor embassy embassy
+      diplomatic diplomatic officer foreign service
+      trade commissioner economic officer political officer
+      public affairs officer protocol officer
+    )
+
+    # Helper predicates
+    has_letters? = fn line -> Regex.match?(~r/[A-Za-z]/, line) end
+    is_email_line? = fn line -> String.contains?(line, "@") end
+    is_phone_line? = fn line -> Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) end
+    is_name_line? = fn line -> line == name end
+    is_company_line? = fn line -> line == company end
+    is_urlish? = fn line ->
+      down = String.downcase(line)
+      String.contains?(down, "www") or String.contains?(down, "http")
+    end
+
+    IO.puts("Filtering out email, phone, name, company lines...")
+    filtered_lines = lines
+    |> Enum.reject(fn line ->
+      is_email_line?.(line) or is_phone_line?.(line) or is_name_line?.(line) or
+      is_company_line?.(line) or not has_letters?.(line)
+    end)
+
+    IO.puts("Remaining lines after filtering:")
+    Enum.with_index(filtered_lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Filtered line #{index}: '#{line}'")
+    end)
+
+    # Look for lines that contain position keywords or look like job titles
+    position_candidates =
+      filtered_lines
+      |> Enum.filter(fn line -> not is_urlish?.(line) end)
+      |> Enum.map(fn line ->
+        down = String.downcase(line)
+        contains_keywords = Enum.any?(position_keywords, &String.contains?(down, &1))
+        looks_like_title = Regex.match?(~r/^[A-Z][A-Za-z\s&.-]{2,40}$/, line) and
+                            length(String.split(line, ~r/\s+/, trim: true)) in 1..3
+
+        IO.puts("  Analyzing line: '#{line}'")
+        IO.puts("    Contains keywords: #{contains_keywords}")
+        IO.puts("    Looks like title: #{looks_like_title}")
+
+        score = 0
+        score = if contains_keywords, do: score + 5, else: score
+        score = if looks_like_title, do: score + 1, else: score
+
+        {score, line}
+      end)
+      |> Enum.filter(fn {score, _line} -> score > 0 end)
+      |> Enum.sort_by(fn {score, _line} -> -score end)
+      |> Enum.map(fn {_score, line} -> line end)
+
+    IO.puts("Position candidates found: #{length(position_candidates)}")
+    Enum.with_index(position_candidates, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Candidate #{index}: '#{line}'")
+    end)
+
+    case position_candidates do
+      [position | _] ->
+        IO.puts("Found position: '#{position}'")
+        String.trim(position)
+      _ ->
+        IO.puts("No position found")
+        nil
+    end
+  end
 
     @doc """
   Test function to verify OCR service is working.

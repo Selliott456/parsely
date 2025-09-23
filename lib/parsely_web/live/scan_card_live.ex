@@ -32,7 +32,13 @@ defmodule ParselyWeb.ScanCardLive do
 
         # Then process the image with OCR
         {:ok, ocr_results} = OCRService.extract_business_card_info(photo_data)
-        IO.puts("OCR results: #{inspect(ocr_results)}")
+
+        # Debug: Show ALL OCR data gathered from photo
+        IO.puts("=" |> String.duplicate(80))
+        IO.puts("🔍 COMPLETE OCR DATA FROM PHOTO:")
+        IO.puts("=" |> String.duplicate(80))
+        IO.inspect(ocr_results, label: "📄 Raw OCR Results", pretty: true, width: 120)
+        IO.puts("=" |> String.duplicate(80))
 
         # Add the image URL to the OCR results
         ocr_results = Map.put(ocr_results, :image_url, image_url)
@@ -164,7 +170,7 @@ defmodule ParselyWeb.ScanCardLive do
     IO.puts("form: #{if assigns.form, do: "present", else: "nil"}")
 
     ~H"""
-    <div id="scan-card" class="mx-auto max-w-4xl" phx-hook="CameraCapture">
+    <div id="scan-card" class="mx-auto max-w-4xl pb-16 min-h-screen" phx-hook="CameraCapture">
 
       <%= if @show_camera do %>
         <!-- Camera Capture Interface -->
@@ -236,7 +242,7 @@ defmodule ParselyWeb.ScanCardLive do
           for={@form}
           phx-change="validate"
           phx-submit="save"
-          class="space-y-6"
+          class="space-y-6 pb-4"
         >
           <.input field={@form[:name]} type="text" label="Name" required />
           <.input field={@form[:email]} type="email" label="Email" phx-change="email-changed" />
@@ -246,13 +252,15 @@ defmodule ParselyWeb.ScanCardLive do
           <.input field={@form[:notes]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
 
           <:actions>
-            <.button_primary
-              type="submit"
-              class={if @duplicate_error, do: "opacity-50 cursor-not-allowed"}
-              disabled={@duplicate_error != nil}
-            >
-              Save Business Card
-            </.button_primary>
+            <div class="pt-4 pb-8">
+              <.button_primary
+                type="submit"
+                class={if @duplicate_error, do: "opacity-50 cursor-not-allowed"}
+                disabled={@duplicate_error != nil}
+              >
+                Save Business Card
+              </.button_primary>
+            </div>
           </:actions>
         </.simple_form>
       </div>
