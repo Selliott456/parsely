@@ -18,7 +18,8 @@ defmodule ParselyWeb.ScanCardLive do
       duplicate_error: nil,
       processing_ocr: false,
       form: to_form(BusinessCards.change_business_card(%BusinessCard{})),
-      ocr_language: ocr_lang
+      ocr_language: ocr_lang,
+      selected_lines: %{}
     )
 
     {:ok, socket}
@@ -47,6 +48,10 @@ defmodule ParselyWeb.ScanCardLive do
 
         # Add the image URL to the OCR results
         ocr_results = Map.put(ocr_results, :image_url, image_url)
+
+        # Store raw_text in ocr_data field since it's not a schema field
+        ocr_data = %{raw_text: ocr_results.raw_text}
+        ocr_results = Map.put(ocr_results, :ocr_data, ocr_data)
 
         # Always populate form with OCR results
         changeset =
@@ -112,6 +117,20 @@ defmodule ParselyWeb.ScanCardLive do
   def handle_event("email-changed", _params, socket) do
     # Clear duplicate error when email field changes
     {:noreply, assign(socket, :duplicate_error, nil)}
+  end
+
+  def handle_event("toggle-line", %{"index" => index_str}, socket) do
+    index = String.to_integer(index_str)
+    current_selected = socket.assigns.selected_lines
+
+    # Toggle the selected state for this line
+    new_selected = if Map.get(current_selected, index, false) do
+      Map.delete(current_selected, index)
+    else
+      Map.put(current_selected, index, true)
+    end
+
+    {:noreply, assign(socket, :selected_lines, new_selected)}
   end
 
   def handle_event("validate", %{"business_card" => business_card_params}, socket) do
@@ -291,6 +310,30 @@ defmodule ParselyWeb.ScanCardLive do
           <.input field={@form[:company]} type="text" label="Company" />
           <.input field={@form[:position]} type="text" label="Position" />
           <.input field={@form[:notes]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
+
+          <!-- Raw OCR Text Display -->
+          <%= if @form.source.changes[:ocr_data] && @form.source.changes[:ocr_data][:raw_text] do %>
+            <div class="mt-6 p-4 bg-gray-50 rounded-lg border">
+              <h3 class="text-sm font-medium text-gray-700 mb-2">Raw OCR Text:</h3>
+              <div class="space-y-1 max-h-32 overflow-y-auto">
+                <%= for {line, index} <- @form.source.changes[:ocr_data][:raw_text] |> String.split("\n") |> Enum.with_index() do %>
+                  <%= if String.trim(line) != "" do %>
+                    <button
+                      type="button"
+                      phx-click="toggle-line"
+                      phx-value-index={index}
+                      class={[
+                        "w-full text-left px-3 py-2 rounded-md text-xs font-mono transition-colors",
+                        if(Map.get(assigns, :selected_lines, %{})[index], do: "bg-mint-deep text-white", else: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50")
+                      ]}
+                    >
+                      <%= line %>
+                    </button>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
 
           <:actions>
             <div class="pt-4 pb-8">
