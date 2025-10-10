@@ -7,13 +7,18 @@ defmodule ParselyWeb.ScanCardLive do
   alias Parsely.ImageService
 
   def mount(_params, _session, socket) do
+    # Default OCR language from current Gettext locale
+    locale = Gettext.get_locale(ParselyWeb.Gettext)
+    ocr_lang = if locale == "ja", do: "jpn", else: "eng"
+
     socket = assign(socket,
       page_title: "Scan Business Card",
       show_camera: true,
       photo_data: nil,
       duplicate_error: nil,
       processing_ocr: false,
-      form: to_form(BusinessCards.change_business_card(%BusinessCard{}))
+      form: to_form(BusinessCards.change_business_card(%BusinessCard{})),
+      ocr_language: ocr_lang
     )
 
     {:ok, socket}
@@ -31,7 +36,7 @@ defmodule ParselyWeb.ScanCardLive do
         IO.puts("Image saved successfully: #{image_url}")
 
         # Then process the image with OCR
-        {:ok, ocr_results} = OCRService.extract_business_card_info(photo_data)
+        {:ok, ocr_results} = OCRService.extract_business_card_info(photo_data, socket.assigns.ocr_language)
 
         # Debug: Show ALL OCR data gathered from photo
         IO.puts("=" |> String.duplicate(80))
@@ -89,6 +94,15 @@ defmodule ParselyWeb.ScanCardLive do
     {:noreply,
      socket
      |> push_navigate(to: ~p"/scan-card", replace: true)}
+  end
+
+  def handle_event("set-ocr-language", %{"lang" => lang}, socket) do
+    # Accept only known values to avoid invalid API params
+    lang = if lang in ["eng", "jpn", "eng,jpn"], do: lang, else: "eng"
+    # Persist a matching site locale cookie (en/ja) without reload
+    locale = if String.starts_with?(lang, "jpn"), do: "ja", else: "en"
+    socket = Phoenix.LiveView.push_event(socket, "set-locale-cookie", %{locale: locale})
+    {:noreply, assign(socket, :ocr_language, lang)}
   end
 
   def handle_event("clear-duplicate-error", _params, socket) do
@@ -171,12 +185,39 @@ defmodule ParselyWeb.ScanCardLive do
 
     ~H"""
     <div id="scan-card" class="mx-auto max-w-4xl pb-16 min-h-screen" phx-hook="CameraCapture">
+      <div id="locale-hook" phx-hook="LocaleCookie"></div>
+
+      <!-- OCR Language Selector -->
+      <div class="bg-white rounded-lg border border-zinc-200 p-4 mt-6">
+        <div class="flex items-center justify-between">
+          <p class="text-sm text-zinc-700">OCR Language</p>
+          <div class="inline-flex items-center gap-2">
+            <button
+              type="button"
+              phx-click="set-ocr-language"
+              phx-value-lang="eng"
+              class={["px-3 py-1 rounded-md text-sm ring-1",
+                @ocr_language == "eng" && "bg-mint-deep text-white ring-mint-deep",
+                @ocr_language != "eng" && "bg-white text-zinc-700 ring-zinc-300 hover:bg-zinc-50"]}
+            >English</button>
+            <button
+              type="button"
+              phx-click="set-ocr-language"
+              phx-value-lang="jpn"
+              class={["px-3 py-1 rounded-md text-sm ring-1",
+                @ocr_language == "jpn" && "bg-mint-deep text-white ring-mint-deep",
+                @ocr_language != "jpn" && "bg-white text-zinc-700 ring-zinc-300 hover:bg-zinc-50"]}
+            >日本語</button>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-zinc-500">Current: <span class="font-medium"><%= @ocr_language %></span></p>
+      </div>
 
       <%= if @show_camera do %>
         <!-- Camera Capture Interface -->
         <div class="bg-white rounded-lg border border-zinc-200 p-6 my-8">
           <div class="text-center">
-            <div class="mx-auto h-64 w-full bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
+            <div id="camera-container" phx-update="ignore" class="mx-auto h-64 w-full bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
               <div class="text-center">
                 <div class="mx-auto h-16 w-16 text-zinc-400 mb-4">
                   <svg class="h-16 w-16" fill="currentColor" viewBox="0 0 24 24">

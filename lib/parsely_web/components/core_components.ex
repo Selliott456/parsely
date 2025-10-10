@@ -107,28 +107,67 @@ defmodule ParselyWeb.CoreComponents do
 
   def flash(assigns) do
     ~H"""
-    <div
-      :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
-      id={@id}
-      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
-      role="alert"
-      class={[
-        "fixed top-2 right-2 w-80 sm:w-96 z-50 rounded-lg p-3 ring-1",
-        @kind == :info && "bg-emerald-50 text-emerald-800 ring-emerald-500 fill-cyan-900",
-        @kind == :error && "bg-rose-50 text-rose-900 shadow-md ring-rose-500 fill-rose-900"
-      ]}
-      {@rest}
-    >
-      <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
-        <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
-        <%= @title %>
-      </p>
-      <p class="mt-2 text-sm leading-5"><%= msg %></p>
-      <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
-      </button>
-    </div>
+    <%= if msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind) do %>
+      <%= if @id in ["client-error", "server-error"] do %>
+        <!-- Non-overlay toast for connectivity/server errors -->
+        <div
+          id={@id}
+          phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+          role="alert"
+          class={[
+            "fixed top-2 right-2 w-80 sm:w-96 z-50 rounded-lg p-3 ring-1",
+            @kind == :info && "bg-emerald-50 text-emerald-800 ring-emerald-500",
+            @kind == :error && "bg-rose-50 text-rose-900 ring-rose-500"
+          ]}
+          {@rest}
+        >
+          <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
+            <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
+            <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
+            <%= @title %>
+          </p>
+          <p class="mt-2 text-sm leading-5"><%= msg %></p>
+          <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
+            <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
+          </button>
+        </div>
+      <% else %>
+        <!-- Overlay modal flash for app info/error -->
+        <div
+          id={@id}
+          phx-hook="AutoDismissFlash"
+          data-autodismiss="3000"
+          data-key={@kind}
+          role="alert"
+          class="fixed inset-0 z-50 flex items-center justify-center"
+          {@rest}
+        >
+          <div
+            class="absolute inset-0 bg-black/40"
+            phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+          />
+          <div
+            class={[
+              "relative rounded-lg p-4 sm:p-5 ring-1 max-w-md w-11/12 shadow-lg",
+              @kind == :info && "bg-emerald-50 text-emerald-800 ring-emerald-500",
+              @kind == :error && "bg-rose-50 text-rose-900 ring-rose-500"
+            ]}
+          >
+            <button type="button" class="group absolute top-2 right-2 p-2" aria-label={gettext("close")}
+              phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+            >
+              <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
+            </button>
+            <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
+              <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
+              <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
+              <%= @title %>
+            </p>
+            <p class="mt-2 text-sm leading-5"><%= msg %></p>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
     """
   end
 

@@ -5,20 +5,21 @@ defmodule Parsely.OCRService do
 
   @doc """
   Extracts text from a base64 encoded image and parses it for business card information.
+  Accepts an OCR language code (e.g., "eng", "jpn", or "eng,jpn").
   """
-    def extract_business_card_info(base64_image) do
+  def extract_business_card_info(base64_image, language \\ "eng") do
     IO.puts("=== OCR SERVICE: Starting extraction ===")
     IO.puts("Base64 image length: #{String.length(base64_image)}")
 
-    case call_ocr_api(base64_image) do
+    case call_ocr_api(base64_image, language) do
       {:ok, text} ->
         IO.puts("=== OCR SERVICE: Raw OCR text ===")
         IO.puts(text)
-        parse_business_card_text(text)
+        parse_business_card_text(text, language)
     end
   end
 
-    defp call_ocr_api(base64_image) do
+  defp call_ocr_api(base64_image, language) do
     # Remove the data:image/jpeg;base64, prefix if present
     clean_base64 = String.replace(base64_image, ~r/^data:image\/[^;]+;base64,/, "")
 
@@ -26,7 +27,7 @@ defmodule Parsely.OCRService do
     IO.puts("Clean base64 length: #{String.length(clean_base64)}")
 
     # Try to use a free OCR API (OCR.space)
-    case call_ocrspace_api(clean_base64) do
+    case call_ocrspace_api(clean_base64, language) do
       {:ok, text} ->
         {:ok, text}
       {:error, reason} ->
@@ -44,7 +45,7 @@ defmodule Parsely.OCRService do
     end
   end
 
-  defp call_ocrspace_api(base64_data) do
+  defp call_ocrspace_api(base64_data, language) do
     # OCR.space free API (limited to 500 requests per day)
     url = "https://api.ocr.space/parse/image"
 
@@ -52,10 +53,13 @@ defmodule Parsely.OCRService do
       {"Content-Type", "application/x-www-form-urlencoded"}
     ]
 
+    # Sanitize language: allow common combos; default to eng
+    lang = if language in ["eng", "jpn", "eng,jpn", "jpn,eng"], do: language, else: "eng"
+
     body = URI.encode_query(%{
       "apikey" => "K81724188988957", # Free API key
       "base64Image" => "data:image/jpeg;base64,#{base64_data}",
-      "language" => "eng",
+      "language" => lang,
       "isOverlayRequired" => "false",
       "filetype" => "jpg"
     })
@@ -92,8 +96,9 @@ defmodule Parsely.OCRService do
     end
   end
 
-  defp parse_business_card_text(text) do
+  defp parse_business_card_text(text, language) do
     IO.puts("=== OCR SERVICE: Parsing business card text ===")
+    IO.puts("Language: #{language}")
 
     # Clean up the text
     clean_text = text
@@ -103,13 +108,40 @@ defmodule Parsely.OCRService do
 
     IO.puts("Clean text:")
     IO.puts(clean_text)
+    IO.puts("Text length: #{String.length(clean_text)}")
 
-    # Extract all fields
-    email = find_email(clean_text)
-    phone = find_phone(clean_text)
-    name = find_name(clean_text, email, phone)
-    company = find_company(clean_text, name, email, phone)
-    position = find_position(clean_text, name, email, phone, company)
+    # Process of elimination approach:
+    # 1. Extract email and phone first (easily identified)
+    # 2. Extract position based on scoring
+    # 3. Extract name based on format (capitalization)
+    # 4. Extract company using keywords and remaining lines
+
+    if String.contains?(language, "jpn") do
+      IO.puts("=== USING JAPANESE PARSING ===")
+      Parsely.JapaneseOCRService.parse_business_card_text(clean_text)
+    else
+      IO.puts("=== USING ENGLISH PARSING WITH PROCESS OF ELIMINATION ===")
+      parse_english_business_card(clean_text)
+    end
+  end
+
+  defp parse_english_business_card(text) do
+    # Step 1: Extract email and phone (easily identified)
+    IO.puts("=== STEP 1: EXTRACTING EMAIL AND PHONE ===")
+    email = find_email(text)
+    phone = find_phone(text)
+
+    # Step 2: Extract position based on scoring
+    IO.puts("=== STEP 2: EXTRACTING POSITION ===")
+    position = find_position_by_scoring(text, email, phone)
+
+    # Step 3: Extract name based on format (capitalization)
+    IO.puts("=== STEP 3: EXTRACTING NAME BY FORMAT ===")
+    name = find_name_by_format(text, email, phone, position)
+
+    # Step 4: Extract company using keywords and remaining lines
+    IO.puts("=== STEP 4: EXTRACTING COMPANY BY KEYWORDS ===")
+    company = find_company_by_keywords(text, email, phone, position, name)
 
     result = %{
       name: name,
@@ -117,7 +149,7 @@ defmodule Parsely.OCRService do
       phone: phone,
       company: company,
       position: position,
-      raw_text: clean_text
+      raw_text: text
     }
 
     IO.puts("=== OCR SERVICE: Extracted data ===")
@@ -130,48 +162,216 @@ defmodule Parsely.OCRService do
     {:ok, result}
   end
 
-  defp find_email(text) do
-    IO.puts("=== FINDING EMAIL ===")
-    IO.puts("Text: #{text}")
+  def find_email(text) do
+    try do
+      IO.puts("=== FINDING EMAIL ===")
+      # Safely print text by converting to binary and replacing non-printable chars
+      safe_text = text
+      |> :unicode.characters_to_binary(:utf8, :latin1)
+      |> String.replace(~r/[^\x20-\x7E]/, "?")
+      IO.puts("Text: #{safe_text}")
 
-    # More comprehensive email patterns
-    email_patterns = [
-      ~r/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, # Standard email
-      ~r/\S+@\S+/, # Simple pattern - anything with @ symbol
-      ~r/[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\s*\.\s*[A-Z|a-z]{2,}/, # Email with spaces
-    ]
+      # More comprehensive email patterns including corrupted OCR characters
+      email_patterns = [
+        ~r/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, # Standard email
+        ~r/\S+@\S+/, # Simple pattern - anything with @ symbol
+        ~r/[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\s*\.\s*[A-Z|a-z]{2,}/, # Email with spaces
+        ~r/[A-Za-z0-9._%+-«»]+@[A-Za-z0-9.-«»]+\.[A-Z|a-z]{2,}/, # Email with corrupted characters
+        ~r/[A-Za-z0-9._%+\-鹵ーⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+@[A-Za-z0-9.\-鹵ーⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+\.[A-Za-z]{2,}/, # Heavily corrupted email
+        ~r/\([^)]*@[^)]*\)/, # Email in parentheses like (ぉ@ol軒.眠ns.rut離僑.配u)
+      ]
 
     Enum.find_value(email_patterns, fn pattern ->
       case Regex.run(pattern, text) do
         [email | _] ->
-          # Clean up the email
+          # Clean up the email - handle corrupted OCR characters using regex patterns
           cleaned_email = email
-          |> String.replace(~r/\s+/, "")
-          |> String.replace("[at]", "@")
-          |> String.replace("[dot]", ".")
+          |> String.replace(~r/\s+/, "")  # Remove all whitespace
+          |> String.replace(~r/\[at\]/, "@")  # Replace [at] with @
+          |> String.replace(~r/\[dot\]/, ".")  # Replace [dot] with .
+          |> String.replace(~r/[«»]/, "")  # Remove guillemets
+          |> String.replace(~r/鹵/, "l")  # Common OCR corruption: 鹵 -> l
+          |> String.replace(~r/ー/, "-")  # Japanese long vowel mark: ー -> -
+          |> String.replace("ⅰ", "i")
+          |> String.replace("ⅱ", "ii")
+          |> String.replace("ⅲ", "iii")
+          |> String.replace("ⅳ", "iv")
+          |> String.replace("ⅴ", "v")
+          |> String.replace("ⅵ", "vi")
+          |> String.replace("ⅶ", "vii")
+          |> String.replace("ⅷ", "viii")
+          |> String.replace("ⅸ", "ix")
+          |> String.replace("ⅹ", "x")
+          |> String.replace("ぉ", "o")  # Japanese hiragana corruption
+          |> String.replace("軒", "n")  # Japanese kanji corruption
+          |> String.replace("眠", "m")  # Japanese kanji corruption
+          |> String.replace("離", "l")  # Japanese kanji corruption
+          |> String.replace("僑", "g")  # Japanese kanji corruption
+          |> String.replace("配", "p")  # Japanese kanji corruption
+          |> String.replace("費", "f")  # Japanese kanji corruption
+          |> String.replace("(", "")   # Remove parentheses
+          |> String.replace(")", "")   # Remove parentheses
+          |> String.replace(~r/[^\w@.-]/, "") # Remove any remaining non-alphanumeric chars except @, ., -
           |> String.trim()
 
-          IO.puts("Found email: #{cleaned_email}")
-          cleaned_email
+          # Validate that it still looks like an email after cleaning
+          if String.contains?(cleaned_email, "@") and String.contains?(cleaned_email, ".") do
+            # Safely print email by converting to binary and replacing non-printable chars
+            safe_email = cleaned_email
+            |> :unicode.characters_to_binary(:utf8, :latin1)
+            |> String.replace(~r/[^\x20-\x7E]/, "?")
+            IO.puts("Found email: #{safe_email}")
+            cleaned_email
+          else
+            nil
+          end
         nil -> nil
       end
-    end) || (IO.puts("No email found") && nil)
-  end
-
-  defp find_phone(text) do
-    # Look for any sequence of 10+ digits (phone numbers)
-    case Regex.run(~r/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, text) do
-      [phone | _] -> phone
-      nil ->
-        # Try other phone patterns
-        case Regex.run(~r/\b\d{10,}\b/, text) do
-          [phone | _] -> phone
-          nil -> nil
-        end
+      end) || (IO.puts("No email found"); nil)
+    rescue
+      error ->
+        IO.puts("Error in email extraction: #{inspect(error)}")
+        nil
     end
   end
 
-  defp find_name(text, email, phone) do
+  def find_phone(text) do
+    try do
+      # Look for phone patterns including corrupted ones
+      phone_patterns = [
+        ~r/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, # Standard US phone
+        ~r/\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, # International phone
+        ~r/電語:\+?[^\d]*(\d{3})[^\d]*(\d{3})[^\d]*(\d{4})/, # Japanese phone with corruption
+        ~r/\+?[^\d]*(\d{3})[^\d]*(\d{3})[^\d]*(\d{4})/, # Corrupted phone with separators
+        ~r/電語:\+?[^\w]*(\d{1,3})[^\w]*(\d{3})[^\w]*(\d{3})[^\w]*(\d{4})/, # Heavily corrupted Japanese phone
+        ~r/電語:\+?[^\d]*(\d{1,3})[^\d]*(\d{3})[^\d]*(\d{4})/, # Japanese phone with single digit area code
+        ~r/\b\d{10,}\b/, # Just digits
+      ]
+
+      Enum.find_value(phone_patterns, fn pattern ->
+        case Regex.run(pattern, text) do
+          [phone | _] ->
+            # Clean up the phone number
+            cleaned_phone = phone
+            |> String.replace(~r/[^\d+\-().\s]/, "") # Remove non-phone characters
+            |> String.replace(~r/\s+/, " ") # Normalize spaces
+            |> String.trim()
+
+            if String.length(cleaned_phone) >= 10 do
+              IO.puts("Found phone: #{cleaned_phone}")
+              cleaned_phone
+            else
+              nil
+            end
+          nil -> nil
+        end
+      end) || (IO.puts("No phone found"); nil)
+    rescue
+      error ->
+        IO.puts("Error in phone extraction: #{inspect(error)}")
+        nil
+    end
+  end
+
+  def find_name_by_format(text, _email, _phone, position) do
+    IO.puts("=== FINDING NAME BY FORMAT ===")
+
+    # Split into lines and normalize
+    lines =
+      text
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    IO.puts("All lines for name analysis:")
+    Enum.with_index(lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Line #{index}: '#{line}'")
+    end)
+
+    # Helper predicates
+    has_letters? = fn line -> Regex.match?(~r/[A-Za-z]/, line) end
+    is_email_line? = fn line -> String.contains?(line, "@") end
+    is_phone_line? = fn line -> Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) end
+    is_position_line? = fn line -> line == position end
+    is_urlish? = fn line ->
+      down = String.downcase(line)
+      String.contains?(down, "www") or String.contains?(down, "http")
+    end
+
+    # Filter out obvious non-name lines
+    IO.puts("Filtering out email, phone, position, and non-letter lines...")
+    filtered_lines = lines
+    |> Enum.reject(fn line ->
+      is_email_line?.(line) or is_phone_line?.(line) or is_position_line?.(line) or
+      not has_letters?.(line) or is_urlish?.(line)
+    end)
+
+    IO.puts("Remaining lines after filtering:")
+    Enum.with_index(filtered_lines, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Filtered line #{index}: '#{line}'")
+    end)
+
+    # Look for name patterns - prioritize capitalized names
+    name_candidates =
+      filtered_lines
+      |> Enum.map(fn line ->
+        # Check for various name formats
+        is_capitalized_name = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+$/, line)
+        is_mixed_case_name = Regex.match?(~r/^[A-Z][a-z]+\s+[A-Z][a-z]+$/, line)
+        is_all_caps_name = Regex.match?(~r/^[A-Z]+\s+[A-Z]+$/, line)
+        is_single_word = Regex.match?(~r/^[A-Z][A-Za-z]+$/, line)
+
+        # Check if it looks like a person name (not a company/job title)
+        looks_like_person = not String.contains?(String.downcase(line), "ltd") and
+                           not String.contains?(String.downcase(line), "inc") and
+                           not String.contains?(String.downcase(line), "corp") and
+                           not String.contains?(String.downcase(line), "company") and
+                           not String.contains?(String.downcase(line), "center") and
+                           not String.contains?(String.downcase(line), "university") and
+                           not String.contains?(String.downcase(line), "college") and
+                           not String.contains?(String.downcase(line), "school") and
+                           not String.contains?(String.downcase(line), "institute") and
+                           not String.contains?(String.downcase(line), "foundation")
+
+        IO.puts("  Analyzing line: '#{line}'")
+        IO.puts("    Is capitalized name: #{is_capitalized_name}")
+        IO.puts("    Is mixed case name: #{is_mixed_case_name}")
+        IO.puts("    Is all caps name: #{is_all_caps_name}")
+        IO.puts("    Is single word: #{is_single_word}")
+        IO.puts("    Looks like person: #{looks_like_person}")
+
+        # Score based on format and likelihood
+        score = 0
+        score = if is_capitalized_name and looks_like_person, do: score + 10, else: score
+        score = if is_mixed_case_name and looks_like_person, do: score + 8, else: score
+        score = if is_all_caps_name and looks_like_person, do: score + 6, else: score
+        score = if is_single_word and looks_like_person, do: score + 3, else: score
+
+        {score, line}
+      end)
+      |> Enum.filter(fn {score, _line} -> score > 0 end)
+      |> Enum.sort_by(fn {score, _line} -> -score end)
+      |> Enum.map(fn {_score, line} -> line end)
+
+    IO.puts("Name candidates found: #{length(name_candidates)}")
+    Enum.with_index(name_candidates, 1)
+    |> Enum.each(fn {line, index} ->
+      IO.puts("  Candidate #{index}: '#{line}'")
+    end)
+
+    case name_candidates do
+      [name | _] ->
+        IO.puts("Found name: '#{name}'")
+        String.trim(name)
+      _ ->
+        IO.puts("No name found")
+        nil
+    end
+  end
+
+  defp find_name(text, email, _phone) do
     # Split into lines and normalize
     lines =
       text
@@ -225,21 +425,64 @@ defmodule Parsely.OCRService do
       end)
     end
 
+    # Check if line looks like a person name (First Last pattern)
+    is_person_name_pattern? = fn line ->
+      # Look for First Last pattern (capitalized first letter, rest can be lowercase or uppercase)
+      # But exclude common job title words
+      down = String.downcase(line)
+      is_name_pattern = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+$/, line)
+      is_not_job_title = not Enum.any?(~w(account executive account manager sales manager marketing manager engineer developer designer consultant analyst specialist director manager supervisor coordinator lead senior junior president vice ceo cto cfo coo vp executive officer ambassador consul attache secretary counselor commissioner), &String.contains?(down, &1))
+
+      is_name_pattern and is_not_job_title
+    end
+
+    # Check for lines that are clearly not names (general patterns)
+    looks_like_non_name? = fn line ->
+      down = String.downcase(line)
+      # Check for lines that are too short
+      String.length(line) < 3 or
+      # Check for lines that contain mostly symbols or punctuation
+      Regex.match?(~r/^[^A-Za-z]*$/, line) or
+      # Check for lines that start with symbols
+      Regex.match?(~r/^[•\s«»\-_]+/, line) or
+      # Check for lines that are mostly numbers
+      Regex.match?(~r/^\d+/, line) or
+      # Check for lines that contain common non-name patterns
+      String.contains?(down, "tel:") or
+      String.contains?(down, "fax:") or
+      String.contains?(down, "email:") or
+      String.contains?(down, "phone:") or
+      String.contains?(down, "suite") or
+      String.contains?(down, "street") or
+      String.contains?(down, "avenue") or
+      String.contains?(down, "road") or
+      String.contains?(down, "st.") or
+      String.contains?(down, "ave.") or
+      String.contains?(down, "rd.") or
+      # Check for lines that are all caps and contain common business terms
+      (Regex.match?(~r/^[A-Z\s]+$/, line) and
+       (String.contains?(down, "national") or String.contains?(down, "international") or
+        String.contains?(down, "corp") or String.contains?(down, "inc") or
+        String.contains?(down, "ltd") or String.contains?(down, "llc")))
+    end
+
     # Score each line as a name candidate (prefer early lines, penalize URLs/addresses)
     scored_candidates =
       lines
       |> Enum.take(7)
       |> Enum.with_index(1)
       |> Enum.reject(fn {line, _idx} ->
-        is_email_line?.(line) or is_phone_line?.(line) or not has_letters?.(line) or contains_role_or_company?.(line)
+        is_email_line?.(line) or is_phone_line?.(line) or not has_letters?.(line) or
+        contains_role_or_company?.(line) or looks_like_non_name?.(line)
       end)
       |> Enum.map(fn {line, idx} ->
         base = 0
         base = if name_like_tokens?.(line), do: base + 5, else: base
+        base = if is_person_name_pattern?.(line), do: base + 8, else: base  # Strongly prefer person name patterns
         base = if not has_digits?.(line), do: base + 2, else: base
         base = if String.length(line) in 3..40, do: base + 1, else: base
-        # Strongly prefer top lines on the card
-        base = if idx <= 2, do: base + 4, else: base
+        # Prefer top lines on the card, but not as strongly
+        base = if idx <= 3, do: base + 2, else: base
         # Penalize things that look like addresses/URLs
         base = if contains_url?.(line), do: base - 5, else: base
         base = if looks_like_address?.(line), do: base - 4, else: base
@@ -289,8 +532,8 @@ defmodule Parsely.OCRService do
     end
   end
 
-  defp find_company(text, name, email, phone) do
-    IO.puts("=== FINDING COMPANY ===")
+  def find_company_by_keywords(text, _email, _phone, position, name) do
+    IO.puts("=== FINDING COMPANY BY KEYWORDS ===")
 
     # Split into lines and normalize
     lines =
@@ -305,37 +548,51 @@ defmodule Parsely.OCRService do
       IO.puts("  Line #{index}: '#{line}'")
     end)
 
-    # Common company indicators
-    company_indicators = ~w(
-      inc ltd limited corp corporation company co gmbh srl spa bv sa plc
-      technologies technology tech solutions systems group international
+    # Company keywords and indicators
+    company_keywords = ~w(
+      ltd limited inc incorporated corp corporation company co
+      gmbh srl spa bv sa plc llc
+      technologies technology tech solutions systems group
+      international national global
       university college school institute foundation
+      center centre center center
+      hospital medical clinic
+      bank financial insurance
+      consulting consulting services
+      manufacturing production
+      retail store shop
+      restaurant cafe hotel
+      law legal firm
+      real estate property
+      media communications
+      entertainment sports
+      nonprofit non-profit ngo
+      government municipal
+      association society
+      federation union
+      alliance partnership
+      venture capital
+      private equity
+      investment fund
     )
 
     # Helper predicates
     has_letters? = fn line -> Regex.match?(~r/[A-Za-z]/, line) end
     is_email_line? = fn line -> String.contains?(line, "@") end
     is_phone_line? = fn line -> Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) end
+    is_position_line? = fn line -> line == position end
     is_name_line? = fn line -> line == name end
     is_urlish? = fn line ->
       down = String.downcase(line)
       String.contains?(down, "www") or String.contains?(down, "http")
     end
-    # Reuse a minimal set of position keywords to avoid picking job title as company
-    position_keywords_for_exclusion = ~w(
-      officer manager director engineer developer specialist coordinator supervisor lead senior junior principal
-      president vice ceo cto cfo coo vp executive ambassador consul attache attaché secretary counselor
-      commissioner
-    )
-    is_position_like? = fn line ->
-      down = String.downcase(line)
-      Enum.any?(position_keywords_for_exclusion, &String.contains?(down, &1))
-    end
 
-    IO.puts("Filtering out email, phone, name lines...")
+    # Filter out obvious non-company lines
+    IO.puts("Filtering out email, phone, position, name, and non-letter lines...")
     filtered_lines = lines
     |> Enum.reject(fn line ->
-      is_email_line?.(line) or is_phone_line?.(line) or is_name_line?.(line) or not has_letters?.(line)
+      is_email_line?.(line) or is_phone_line?.(line) or is_position_line?.(line) or
+      is_name_line?.(line) or not has_letters?.(line) or is_urlish?.(line)
     end)
 
     IO.puts("Remaining lines after filtering:")
@@ -344,32 +601,29 @@ defmodule Parsely.OCRService do
       IO.puts("  Filtered line #{index}: '#{line}'")
     end)
 
-    # Look for lines that contain company indicators or look like company names
+    # Score each line as a company candidate
     company_candidates =
       filtered_lines
       |> Enum.map(fn line ->
         down = String.downcase(line)
-        contains_indicators = Enum.any?(company_indicators, &String.contains?(down, &1))
+        contains_keywords = Enum.any?(company_keywords, &String.contains?(down, &1))
         looks_like_company = Regex.match?(~r/^[A-Z][A-Za-z\s&.-]{2,50}$/, line) and
-                              length(String.split(line, ~r/\s+/, trim: true)) in 1..4
-        person_like = Regex.match?(~r/^[A-Z][A-Za-z\-']+\s+[A-Z][A-Za-z\-']+$/, line)
-        url_like = is_urlish?.(line)
-        position_like = is_position_like?.(line)
+                            length(String.split(line, ~r/\s+/, trim: true)) in 1..4
+
+        # Check if it looks like a person name (should be excluded)
+        looks_like_person = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+$/, line) and
+                           not contains_keywords
 
         IO.puts("  Analyzing line: '#{line}'")
-        IO.puts("    Contains indicators: #{contains_indicators}")
+        IO.puts("    Contains keywords: #{contains_keywords}")
         IO.puts("    Looks like company: #{looks_like_company}")
-        IO.puts("    URL-like: #{url_like}")
-        IO.puts("    Person-like: #{person_like}")
-        IO.puts("    Position-like: #{position_like}")
+        IO.puts("    Looks like person: #{looks_like_person}")
 
-        # Score: prioritize explicit indicators, de-prioritize person/url/position lines
+        # Score based on keywords and format
         score = 0
-        score = if contains_indicators, do: score + 5, else: score
-        score = if looks_like_company, do: score + 1, else: score
-        score = if person_like, do: score - 4, else: score
-        score = if url_like, do: score - 5, else: score
-        score = if position_like, do: score - 4, else: score
+        score = if contains_keywords, do: score + 8, else: score
+        score = if looks_like_company, do: score + 2, else: score
+        score = if looks_like_person, do: score - 5, else: score
 
         {score, line}
       end)
@@ -393,8 +647,9 @@ defmodule Parsely.OCRService do
     end
   end
 
-  defp find_position(text, name, email, phone, company) do
-    IO.puts("=== FINDING POSITION ===")
+
+  def find_position_by_scoring(text, _email, _phone) do
+    IO.puts("=== FINDING POSITION BY SCORING ===")
 
     # Split into lines and normalize
     lines =
@@ -423,25 +678,23 @@ defmodule Parsely.OCRService do
       minister counselor embassy embassy
       diplomatic diplomatic officer foreign service
       trade commissioner economic officer political officer
-      public affairs officer protocol officer
+      public affairs officer protocol officer advisor operations manager
     )
 
     # Helper predicates
     has_letters? = fn line -> Regex.match?(~r/[A-Za-z]/, line) end
     is_email_line? = fn line -> String.contains?(line, "@") end
     is_phone_line? = fn line -> Regex.match?(~r/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/, line) end
-    is_name_line? = fn line -> line == name end
-    is_company_line? = fn line -> line == company end
     is_urlish? = fn line ->
       down = String.downcase(line)
       String.contains?(down, "www") or String.contains?(down, "http")
     end
 
-    IO.puts("Filtering out email, phone, name, company lines...")
+    # Filter out obvious non-position lines
+    IO.puts("Filtering out email, phone, and non-letter lines...")
     filtered_lines = lines
     |> Enum.reject(fn line ->
-      is_email_line?.(line) or is_phone_line?.(line) or is_name_line?.(line) or
-      is_company_line?.(line) or not has_letters?.(line)
+      is_email_line?.(line) or is_phone_line?.(line) or not has_letters?.(line) or is_urlish?.(line)
     end)
 
     IO.puts("Remaining lines after filtering:")
@@ -450,10 +703,9 @@ defmodule Parsely.OCRService do
       IO.puts("  Filtered line #{index}: '#{line}'")
     end)
 
-    # Look for lines that contain position keywords or look like job titles
+    # Score each line as a position candidate
     position_candidates =
       filtered_lines
-      |> Enum.filter(fn line -> not is_urlish?.(line) end)
       |> Enum.map(fn line ->
         down = String.downcase(line)
         contains_keywords = Enum.any?(position_keywords, &String.contains?(down, &1))
@@ -490,7 +742,8 @@ defmodule Parsely.OCRService do
     end
   end
 
-    @doc """
+
+  @doc """
   Test function to verify OCR service is working.
   """
   def test_ocr() do
@@ -499,7 +752,7 @@ defmodule Parsely.OCRService do
     # Test with a simple base64 image (1x1 pixel)
     test_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwA/8A"
 
-    {:ok, result} = extract_business_card_info(test_image)
+    {:ok, result} = extract_business_card_info(test_image, "eng")
     IO.puts("OCR test successful!")
     IO.puts("Result: #{inspect(result)}")
     {:ok, result}
@@ -517,7 +770,7 @@ defmodule Parsely.OCRService do
     # Remove the data:image/jpeg;base64, prefix
     clean_base64 = String.replace(test_image, ~r/^data:image\/[^;]+;base64,/, "")
 
-    case call_ocrspace_api(clean_base64) do
+    case call_ocrspace_api(clean_base64, "eng") do
       {:ok, text} ->
         IO.puts("OCR API test successful!")
         IO.puts("Raw text: #{text}")
@@ -564,7 +817,7 @@ defmodule Parsely.OCRService do
       end
     end)
 
-            # Test each extraction function
+    # Test each extraction function
     IO.puts("=== EXTRACTION RESULTS ===")
 
     # Extract the three main fields
@@ -576,7 +829,7 @@ defmodule Parsely.OCRService do
     IO.puts("Email extraction: #{email}")
     IO.puts("Phone extraction: #{phone}")
 
-            IO.puts("")
+    IO.puts("")
     IO.puts("=== FINAL RESULT ===")
     result = %{
       name: name,

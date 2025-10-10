@@ -25,12 +25,47 @@ import PhotoCapture from "./hooks/photo_capture";
 import PasswordStrength from "./hooks/password_strength";
 import CameraCapture from "./hooks/camera_capture";
 
+const Hooks = {
+  AutoDismissFlash: {
+    mounted() {
+      const ms = parseInt(this.el.dataset.autodismiss || "4000", 10);
+      const key = this.el.dataset.key;
+      if (!isNaN(ms) && ms > 0) {
+        this.timer = setTimeout(() => {
+          // Push clear-flash to server, then hide element
+          this.pushEvent("lv:clear-flash", { key });
+          this.el.style.transition = "opacity 200ms ease";
+          this.el.style.opacity = "0";
+          setTimeout(() => this.el.remove(), 220);
+        }, ms);
+      }
+    },
+    destroyed() {
+      if (this.timer) clearTimeout(this.timer);
+    },
+  },
+  LocaleCookie: {
+    mounted() {
+      this.handleEvent("set-locale-cookie", ({ locale }) => {
+        try {
+          const value = locale === "ja" ? "ja" : "en";
+          document.cookie = `locale=${value}; Path=/; Max-Age=${
+            60 * 60 * 24 * 365
+          }`;
+        } catch (e) {
+          console.warn("Failed to set locale cookie", e);
+        }
+      });
+    },
+  },
+};
+
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
-  hooks: { PhotoCapture, PasswordStrength, CameraCapture },
+  hooks: { PhotoCapture, PasswordStrength, CameraCapture, ...Hooks },
 });
 
 // Show progress bar on live navigation and form submits

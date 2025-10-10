@@ -4,6 +4,9 @@ const CameraCapture = {
     this.stream = null;
     this.video = null;
     this.canvas = null;
+    this.metadataTimer = null;
+
+    // Always reinitialize on page visit to avoid stale black video on return
 
     // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -25,6 +28,9 @@ const CameraCapture = {
 
     // Start camera immediately when hook is mounted
     this.startCamera();
+
+    // Set up capture button immediately
+    this.setupCaptureButton();
 
     // Also listen for the scan-card event from the dashboard (for navigation)
     this.handleEvent("scan-card", () => {
@@ -57,6 +63,7 @@ const CameraCapture = {
           height: { ideal: 720 },
         },
       });
+      // Do not persist globally; we want clean init when page is revisited
       console.log("Camera access granted");
       console.log(
         "Stream tracks:",
@@ -68,14 +75,28 @@ const CameraCapture = {
       this.video.srcObject = this.stream;
       this.video.autoplay = true;
       this.video.playsInline = true;
+      this.video.muted = true; // allow autoplay on mobile
+      window.__parsely_camera_video = this.video;
+
+      // Attach video to placeholder immediately so user sees something
+      this.attachVideoPlaceholder();
 
       // Create canvas for capturing
       this.canvas = document.createElement("canvas");
       this.canvas.width = 1280;
       this.canvas.height = 720;
 
-      // Wait for video to be ready
-      this.video.addEventListener("loadedmetadata", () => {
+      // Start playback, handle promise
+      try {
+        await this.video.play();
+        console.log("Video playback started");
+      } catch (playErr) {
+        console.warn("Autoplay failed, waiting for metadata:", playErr);
+      }
+
+      // Wait for video to be ready, with fallback timeout
+      const onReady = () => {
+        clearTimeout(this.metadataTimer);
         console.log("Video metadata loaded, setting up video display");
         console.log(
           "Video dimensions:",
@@ -85,7 +106,16 @@ const CameraCapture = {
         );
         this.updateCameraStatus("Camera ready");
         this.setupVideoDisplay();
-      });
+      };
+
+      this.video.addEventListener("loadedmetadata", onReady, { once: true });
+      this.video.addEventListener("loadeddata", onReady, { once: true });
+
+      this.metadataTimer = setTimeout(() => {
+        console.warn("Video metadata timeout; proceeding to setup display");
+        this.updateCameraStatus("Camera ready");
+        this.setupVideoDisplay();
+      }, 5000);
 
       this.video.addEventListener("error", (error) => {
         console.error("Video error:", error);
@@ -114,12 +144,34 @@ const CameraCapture = {
 
   setupVideoDisplay() {
     // Replace the placeholder with actual video
-    const placeholder = document.querySelector(".bg-zinc-100");
+    const placeholder =
+      document.querySelector("#camera-container") ||
+      document.querySelector(".bg-zinc-100, .camera-placeholder");
     if (placeholder) {
-      placeholder.innerHTML = "";
-      placeholder.appendChild(this.video);
+      // If already prepared, avoid reflow/flicker
+      if (placeholder.classList.contains("camera-ready")) {
+        return;
+      }
+      // Ensure a stable inner wrapper to preserve height
+      let holder = placeholder.querySelector(".camera-holder");
+      if (!holder) {
+        holder = document.createElement("div");
+        holder.className = "camera-holder w-full h-full";
+        // Clear only the dynamic part
+        while (placeholder.firstChild)
+          placeholder.removeChild(placeholder.firstChild);
+        placeholder.appendChild(holder);
+      }
+      holder.innerHTML = "";
+      holder.appendChild(this.video);
       placeholder.classList.remove("bg-zinc-100");
-      placeholder.classList.add("bg-black", "relative", "z-0");
+      placeholder.classList.add(
+        "bg-black",
+        "relative",
+        "z-0",
+        "camera-placeholder",
+        "camera-ready"
+      );
 
       // Ensure the video doesn't overflow its container
       this.video.style.width = "100%";
@@ -133,6 +185,45 @@ const CameraCapture = {
 
     // Set up capture button
     this.setupCaptureButton();
+
+    // Double-check that the button is properly set up
+    setTimeout(() => {
+      const btn = document.querySelector("#capture-photo-btn");
+      console.log("Final button check:", btn);
+      if (btn) {
+        console.log("Button is in DOM and ready");
+      } else {
+        console.error("Button still not found after setup!");
+      }
+    }, 200);
+  },
+
+  attachVideoPlaceholder() {
+    // Ensures there's a container to hold the video immediately
+    const container =
+      document.querySelector("#camera-container") ||
+      document.querySelector(".bg-zinc-100");
+    if (container) {
+      container.classList.add("camera-placeholder");
+      let holder = container.querySelector(".camera-holder");
+      if (!holder) {
+        holder = document.createElement("div");
+        holder.className = "camera-holder w-full h-full";
+        // Clear only the dynamic part
+        while (container.firstChild)
+          container.removeChild(container.firstChild);
+        container.appendChild(holder);
+      }
+      holder.innerHTML = "";
+      holder.appendChild(this.video);
+      // Apply final sizing immediately to avoid initial small frame
+      container.classList.remove("bg-zinc-100");
+      container.classList.add("bg-black", "relative", "z-0", "camera-ready");
+      this.video.style.width = "100%";
+      this.video.style.height = "100%";
+      this.video.style.objectFit = "cover";
+      this.updateCameraStatus("Starting camera...");
+    }
   },
 
   setupCaptureButton() {
@@ -141,14 +232,21 @@ const CameraCapture = {
     console.log("Looking for capture button:", this.captureBtn);
     if (this.captureBtn) {
       console.log("Found capture button, setting up click handler");
-      this.captureBtn.addEventListener("click", (e) => {
+      // Remove any existing event listeners to avoid duplicates
+      this.captureBtn.removeEventListener("click", this.capturePhotoHandler);
+      this.capturePhotoHandler = (e) => {
         console.log("Capture button clicked!");
         e.preventDefault();
         this.capturePhoto();
-      });
+      };
+      this.captureBtn.addEventListener("click", this.capturePhotoHandler);
       console.log("Click handler set up successfully");
     } else {
       console.log("Capture button not found!");
+      // Retry after a short delay in case the DOM hasn't updated yet
+      setTimeout(() => {
+        this.setupCaptureButton();
+      }, 100);
     }
   },
 
@@ -160,8 +258,11 @@ const CameraCapture = {
   },
 
   stopCamera() {
+    clearTimeout(this.metadataTimer);
     if (this.stream) {
-      this.stream.getTracks().forEach((track) => track.stop());
+      try {
+        this.stream.getTracks().forEach((track) => track.stop());
+      } catch (_) {}
       this.stream = null;
     }
     if (this.video) {
@@ -194,7 +295,16 @@ const CameraCapture = {
 
   destroyed() {
     // Clean up camera stream when component is destroyed
+    clearTimeout(this.metadataTimer);
     this.stopCamera();
+
+    // Clean up event listeners
+    if (this.captureBtn && this.capturePhotoHandler) {
+      this.captureBtn.removeEventListener("click", this.capturePhotoHandler);
+    }
+
+    delete window.__parsely_camera_stream;
+    delete window.__parsely_camera_video;
   },
 };
 

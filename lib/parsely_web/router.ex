@@ -10,6 +10,7 @@ defmodule ParselyWeb.Router do
     plug :put_root_layout, html: {ParselyWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug ParselyWeb.Plugs.SetLocale
     plug :fetch_current_user
   end
 
