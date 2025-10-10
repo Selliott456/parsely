@@ -181,7 +181,7 @@ defmodule Parsely.OCRService do
         ~r/\([^)]*@[^)]*\)/, # Email in parentheses like (ぉ@ol軒.眠ns.rut離僑.配u)
       ]
 
-    Enum.find_value(email_patterns, fn pattern ->
+    case Enum.find_value(email_patterns, fn pattern ->
       case Regex.run(pattern, text) do
         [email | _] ->
           # Clean up the email - handle corrupted OCR characters using regex patterns
@@ -227,7 +227,57 @@ defmodule Parsely.OCRService do
           end
         nil -> nil
       end
-      end) || (IO.puts("No email found"); nil)
+      end) do
+      nil ->
+        # Fallback: look for tokens containing '@' and extract the surrounding word
+        token_candidate = text
+        |> String.split("\n")
+        |> Enum.flat_map(fn line ->
+          if String.contains?(line, "@") do
+            String.split(line)
+            |> Enum.filter(&String.contains?(&1, "@"))
+          else
+            []
+          end
+        end)
+        |> Enum.find_value(fn word ->
+          cleaned = word
+          |> String.trim_trailing([",", ";", ":", ".", ")"])
+          |> String.trim_leading(["("])
+          |> String.replace(~r/\s+/, "")
+          |> String.replace(~r/\[at\]/, "@")
+          |> String.replace(~r/\[dot\]/, ".")
+          |> String.replace(~r/[«»]/, "")
+          |> String.replace(~r/鹵/, "l")
+          |> String.replace(~r/ー/, "-")
+          |> String.replace("ⅰ", "i")
+          |> String.replace("ⅱ", "ii")
+          |> String.replace("ⅲ", "iii")
+          |> String.replace("ⅳ", "iv")
+          |> String.replace("ⅴ", "v")
+          |> String.replace("ⅵ", "vi")
+          |> String.replace("ⅶ", "vii")
+          |> String.replace("ⅷ", "viii")
+          |> String.replace("ⅸ", "ix")
+          |> String.replace("ⅹ", "x")
+          |> String.replace(~r/[^\w@.-]/, "")
+          |> String.trim()
+
+          if Regex.match?(~r/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/, cleaned) do
+            safe_email = cleaned
+            |> :unicode.characters_to_binary(:utf8, :latin1)
+            |> String.replace(~r/[^\x20-\x7E]/, "?")
+            IO.puts("Found email by token scan: #{safe_email}")
+            cleaned
+          else
+            nil
+          end
+        end)
+
+        token_candidate || (IO.puts("No email found"); nil)
+      cleaned ->
+        cleaned
+    end
     rescue
       error ->
         IO.puts("Error in email extraction: #{inspect(error)}")
