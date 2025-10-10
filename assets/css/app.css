@@ -26,6 +26,7 @@ html {
   background-color: var(--color-soft-white);
   /* Ensure mobile viewport height correctness */
   height: 100%;
+  font-size: clamp(16px, 2.8vw + 10px, 18px);
 }
 
 body {
@@ -35,6 +36,7 @@ body {
   background-color: var(--color-soft-white);
   min-height: 100vh;
   min-height: 100svh; /* modern small viewport height for mobile */
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Typography */
@@ -117,4 +119,16 @@ input:focus, textarea:focus, select:focus {
   html {
     height: -webkit-fill-available;
   }
+}
+
+/* Mobile typography scaling (slight increase) */
+@media (max-width: 768px) {
+  html { font-size: 18px; }
+}
+
+/* Utility size nudges on small/medium screens */
+@media (max-width: 768px) {
+  .text-sm { font-size: 0.98rem; }
+  .text-base { font-size: 1.0625rem; }
+  .text-lg { font-size: 1.18rem; }
 }

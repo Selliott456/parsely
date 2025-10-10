@@ -163,7 +163,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
   end
 
   def handle_event("edit_card", _params, socket) do
-    {:navigate, socket, to: ~p"/business-cards/#{socket.assigns.business_card.id}/edit"}
+    {:noreply, push_navigate(socket, to: ~p"/business-cards/#{socket.assigns.business_card.id}/edit")}
   end
 
   def handle_event("add-note", %{"note" => %{"text" => note_text}}, socket) do
@@ -218,10 +218,16 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
     case BusinessCards.delete_business_card(business_card) do
       {:ok, _} ->
-        {:navigate, socket, to: ~p"/business-cards", flash: %{info: "Business card deleted successfully."}}
+        {:noreply,
+         socket
+         |> put_flash(:info, "Business card deleted successfully.")
+         |> push_navigate(to: ~p"/business-cards")}
 
       {:error, _} ->
-        {:navigate, socket, to: ~p"/business-cards", flash: %{error: "Failed to delete business card."}}
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to delete business card.")
+         |> push_navigate(to: ~p"/business-cards")}
     end
   end
 end
