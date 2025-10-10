@@ -19,7 +19,10 @@ defmodule ParselyWeb.ScanCardLive do
       processing_ocr: false,
       form: to_form(BusinessCards.change_business_card(%BusinessCard{})),
       ocr_language: ocr_lang,
-      selected_lines: %{}
+      selected_lines: %{},
+      show_assign_modal: false,
+      selected_ocr_line: nil,
+      selected_ocr_text: nil
     )
 
     {:ok, socket}
@@ -121,16 +124,52 @@ defmodule ParselyWeb.ScanCardLive do
 
   def handle_event("toggle-line", %{"index" => index_str}, socket) do
     index = String.to_integer(index_str)
-    current_selected = socket.assigns.selected_lines
 
-    # Toggle the selected state for this line
-    new_selected = if Map.get(current_selected, index, false) do
-      Map.delete(current_selected, index)
+    # Get the OCR text for this line
+    ocr_text = if socket.assigns.form.source.changes[:ocr_data] && socket.assigns.form.source.changes[:ocr_data][:raw_text] do
+      lines = String.split(socket.assigns.form.source.changes[:ocr_data][:raw_text], "\n")
+      Enum.at(lines, index, "")
     else
-      Map.put(current_selected, index, true)
+      ""
     end
 
-    {:noreply, assign(socket, :selected_lines, new_selected)}
+    # Open the assignment modal
+    {:noreply, assign(socket,
+      show_assign_modal: true,
+      selected_ocr_line: index,
+      selected_ocr_text: ocr_text
+    )}
+  end
+
+  def handle_event("close-assign-modal", _params, socket) do
+    {:noreply, assign(socket,
+      show_assign_modal: false,
+      selected_ocr_line: nil,
+      selected_ocr_text: nil
+    )}
+  end
+
+  def handle_event("assign-to-field", %{"field" => field_name}, socket) do
+    # Get current form data
+    current_changes = socket.assigns.form.source.changes
+    selected_text = socket.assigns.selected_ocr_text
+
+    # Update the specified field with the selected OCR text
+    updated_changes = Map.put(current_changes, String.to_atom(field_name), selected_text)
+
+    # Create new changeset with updated data
+    changeset =
+      %BusinessCards.BusinessCard{}
+      |> BusinessCards.change_business_card(updated_changes)
+      |> Map.put(:action, :validate)
+
+    # Close modal and update form
+    {:noreply, assign(socket,
+      show_assign_modal: false,
+      selected_ocr_line: nil,
+      selected_ocr_text: nil,
+      form: to_form(changeset)
+    )}
   end
 
   def handle_event("validate", %{"business_card" => business_card_params}, socket) do
@@ -322,10 +361,7 @@ defmodule ParselyWeb.ScanCardLive do
                       type="button"
                       phx-click="toggle-line"
                       phx-value-index={index}
-                      class={[
-                        "w-full text-left px-3 py-2 rounded-md text-xs font-mono transition-colors",
-                        if(Map.get(assigns, :selected_lines, %{})[index], do: "bg-mint-deep text-white", else: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50")
-                      ]}
+                      class="w-full text-left px-3 py-2 rounded-md text-xs font-mono bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
                     >
                       <%= line %>
                     </button>
@@ -348,6 +384,96 @@ defmodule ParselyWeb.ScanCardLive do
           </:actions>
         </.simple_form>
       </div>
+
+      <!-- Assignment Modal -->
+      <%= if @show_assign_modal do %>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" phx-click="close-assign-modal">
+          <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" phx-click-away="close-assign-modal">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Assign OCR Text</h3>
+              <button
+                type="button"
+                phx-click="close-assign-modal"
+                class="text-gray-400 hover:text-gray-600"
+              >
+                <.icon name="hero-x-mark" class="h-6 w-6" />
+              </button>
+            </div>
+
+            <div class="mb-4">
+              <p class="text-sm text-gray-600 mb-2">Selected text:</p>
+              <div class="bg-gray-100 p-3 rounded-md font-mono text-sm">
+                "<%= @selected_ocr_text %>"
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <p class="text-sm font-medium text-gray-700">Assign to field:</p>
+              <div class="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  phx-click="assign-to-field"
+                  phx-value-field="name"
+                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div class="font-medium text-gray-900">Name</div>
+                  <div class="text-sm text-gray-500">Person's full name</div>
+                </button>
+
+                <button
+                  type="button"
+                  phx-click="assign-to-field"
+                  phx-value-field="email"
+                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div class="font-medium text-gray-900">Email</div>
+                  <div class="text-sm text-gray-500">Email address</div>
+                </button>
+
+                <button
+                  type="button"
+                  phx-click="assign-to-field"
+                  phx-value-field="phone"
+                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div class="font-medium text-gray-900">Phone</div>
+                  <div class="text-sm text-gray-500">Phone number</div>
+                </button>
+
+                <button
+                  type="button"
+                  phx-click="assign-to-field"
+                  phx-value-field="company"
+                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div class="font-medium text-gray-900">Company</div>
+                  <div class="text-sm text-gray-500">Company or organization name</div>
+                </button>
+
+                <button
+                  type="button"
+                  phx-click="assign-to-field"
+                  phx-value-field="position"
+                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div class="font-medium text-gray-900">Position</div>
+                  <div class="text-sm text-gray-500">Job title or position</div>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+              <button
+                type="button"
+                phx-click="close-assign-modal"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
     """
   end
