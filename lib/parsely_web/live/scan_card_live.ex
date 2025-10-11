@@ -177,13 +177,10 @@ defmodule ParselyWeb.ScanCardLive do
       |> BusinessCards.change_business_card(updated_changes)
       |> Map.put(:action, :validate)
 
-    # Track assigned items (unless it's notes field)
-    new_assigned_ocr_lines = if field_name != "notes" do
-      MapSet.put(socket.assigns.assigned_ocr_lines, selected_line_index)
-    else
-      socket.assigns.assigned_ocr_lines
-    end
+    # Track assigned items - hide OCR pills for all fields including notes
+    new_assigned_ocr_lines = MapSet.put(socket.assigns.assigned_ocr_lines, selected_line_index)
 
+    # Only track field assignments for non-notes fields (notes field never disappears)
     new_assigned_fields = if field_name != "notes" do
       MapSet.put(socket.assigns.assigned_fields, field_name)
     else
