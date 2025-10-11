@@ -11,23 +11,23 @@
       <!-- Desktop Navigation Links -->
       <div class="hidden md:flex items-center space-x-8">
         <%= if @current_user do %>
-          <.link href={~p"/dashboard"} class="text-zinc-600 hover:text-zinc-900 transition-colors duration-200">
+          <.link href={~p"/dashboard"} class="text-zinc-600 hover:text-brand transition-colors duration-200">
             Home
           </.link>
-          <.link href={~p"/business-cards"} class="text-zinc-600 hover:text-zinc-900 transition-colors duration-200">
+          <.link href={~p"/business-cards"} class="text-zinc-600 hover:text-brand transition-colors duration-200">
             Business Cards
           </.link>
-          <.link href={~p"/users/settings"} class="text-zinc-600 hover:text-zinc-900 transition-colors duration-200">
+          <.link href={~p"/users/settings"} class="text-zinc-600 hover:text-brand transition-colors duration-200">
             Settings
           </.link>
-          <.link href={~p"/users/log_out"} method="delete" class="text-zinc-600 hover:text-zinc-900 transition-colors duration-200">
+          <.link href={~p"/users/log_out"} method="delete" class="text-zinc-600 hover:text-brand transition-colors duration-200">
             Log out
           </.link>
         <% else %>
-          <.link href={~p"/users/register"} class="text-zinc-600 hover:text-zinc-900 transition-colors duration-200">
+          <.link href={~p"/users/register"} class="text-zinc-600 hover:text-brand transition-colors duration-200">
             Register
           </.link>
-          <.link href={~p"/users/log_in"} class="text-zinc-600 hover:text-zinc-900 transition-colors duration-200">
+          <.link href={~p"/users/log_in"} class="text-zinc-600 hover:text-brand transition-colors duration-200">
             Log in
           </.link>
         <% end %>
@@ -53,23 +53,23 @@
     <div x-show="mobileMenuOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-1" class="md:hidden" style="display: none;">
       <div class="px-2 pt-2 pb-3 space-y-1 border-t border-zinc-200">
         <%= if @current_user do %>
-          <.link href={~p"/dashboard"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-200">
+          <.link href={~p"/dashboard"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-brand hover:bg-purple-50 rounded-md transition-colors duration-200">
             Home
           </.link>
-          <.link href={~p"/business-cards"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-200">
+          <.link href={~p"/business-cards"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-brand hover:bg-purple-50 rounded-md transition-colors duration-200">
             Business Cards
           </.link>
-          <.link href={~p"/users/settings"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-200">
+          <.link href={~p"/users/settings"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-brand hover:bg-purple-50 rounded-md transition-colors duration-200">
             Settings
           </.link>
-          <.link href={~p"/users/log_out"} method="delete" class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-200">
+          <.link href={~p"/users/log_out"} method="delete" class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-brand hover:bg-purple-50 rounded-md transition-colors duration-200">
             Log out
           </.link>
         <% else %>
-          <.link href={~p"/users/register"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-200">
+          <.link href={~p"/users/register"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-brand hover:bg-purple-50 rounded-md transition-colors duration-200">
             Register
           </.link>
-          <.link href={~p"/users/log_in"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-200">
+          <.link href={~p"/users/log_in"} class="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-brand hover:bg-purple-50 rounded-md transition-colors duration-200">
             Log in
           </.link>
         <% end %>

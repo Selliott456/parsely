@@ -22,7 +22,9 @@ defmodule ParselyWeb.ScanCardLive do
       selected_lines: %{},
       show_assign_modal: false,
       selected_ocr_line: nil,
-      selected_ocr_text: nil
+      selected_ocr_text: nil,
+      assigned_ocr_lines: MapSet.new(),
+      assigned_fields: MapSet.new()
     )
 
     {:ok, socket}
@@ -153,9 +155,21 @@ defmodule ParselyWeb.ScanCardLive do
     # Get current form data
     current_changes = socket.assigns.form.source.changes
     selected_text = socket.assigns.selected_ocr_text
+    selected_line_index = socket.assigns.selected_ocr_line
 
-    # Update the specified field with the selected OCR text
-    updated_changes = Map.put(current_changes, String.to_atom(field_name), selected_text)
+    # Handle notes field specially - append to existing notes
+    updated_changes = if field_name == "notes" do
+      current_notes = Map.get(current_changes, :notes_text, "")
+      new_notes = if current_notes == "" do
+        selected_text
+      else
+        current_notes <> "\n" <> selected_text
+      end
+      Map.put(current_changes, :notes_text, new_notes)
+    else
+      # Update the specified field with the selected OCR text
+      Map.put(current_changes, String.to_atom(field_name), selected_text)
+    end
 
     # Create new changeset with updated data
     changeset =
@@ -163,12 +177,27 @@ defmodule ParselyWeb.ScanCardLive do
       |> BusinessCards.change_business_card(updated_changes)
       |> Map.put(:action, :validate)
 
+    # Track assigned items (unless it's notes field)
+    new_assigned_ocr_lines = if field_name != "notes" do
+      MapSet.put(socket.assigns.assigned_ocr_lines, selected_line_index)
+    else
+      socket.assigns.assigned_ocr_lines
+    end
+
+    new_assigned_fields = if field_name != "notes" do
+      MapSet.put(socket.assigns.assigned_fields, field_name)
+    else
+      socket.assigns.assigned_fields
+    end
+
     # Close modal and update form
     {:noreply, assign(socket,
       show_assign_modal: false,
       selected_ocr_line: nil,
       selected_ocr_text: nil,
-      form: to_form(changeset)
+      form: to_form(changeset),
+      assigned_ocr_lines: new_assigned_ocr_lines,
+      assigned_fields: new_assigned_fields
     )}
   end
 
@@ -208,19 +237,7 @@ defmodule ParselyWeb.ScanCardLive do
        |> assign(:duplicate_error, email)
        |> put_flash(:error, "A business card with this email already exists")}
     else
-      # Handle notes field - if notes are provided, format them into JSON structure
-      business_card_params = case Map.get(business_card_params, "notes") do
-        notes when is_binary(notes) and byte_size(notes) > 0 ->
-          # Format notes as JSON array with timestamp
-          formatted_notes = [%{
-            "note" => notes,
-            "date" => DateTime.utc_now() |> DateTime.to_iso8601()
-          }]
-          Map.put(business_card_params, "notes", formatted_notes)
-        _ ->
-          # No notes provided, set empty array
-          Map.put(business_card_params, "notes", [])
-      end
+      # The notes_text virtual field will be automatically converted to notes array in the changeset
 
       case BusinessCards.create_business_card(business_card_params) do
         {:ok, _business_card} ->
@@ -245,31 +262,6 @@ defmodule ParselyWeb.ScanCardLive do
     <div id="scan-card" class="mx-auto max-w-4xl pb-16 min-h-screen" phx-hook="CameraCapture">
       <div id="locale-hook" phx-hook="LocaleCookie"></div>
 
-      <!-- OCR Language Selector -->
-      <div class="bg-white rounded-lg border border-zinc-200 p-4 mt-6">
-        <div class="flex items-center justify-between">
-          <p class="text-sm text-zinc-700">OCR Language</p>
-          <div class="inline-flex items-center gap-2">
-            <button
-              type="button"
-              phx-click="set-ocr-language"
-              phx-value-lang="eng"
-              class={["px-3 py-1 rounded-md text-sm ring-1",
-                @ocr_language == "eng" && "bg-mint-deep text-white ring-mint-deep",
-                @ocr_language != "eng" && "bg-white text-zinc-700 ring-zinc-300 hover:bg-zinc-50"]}
-            >English</button>
-            <button
-              type="button"
-              phx-click="set-ocr-language"
-              phx-value-lang="jpn"
-              class={["px-3 py-1 rounded-md text-sm ring-1",
-                @ocr_language == "jpn" && "bg-mint-deep text-white ring-mint-deep",
-                @ocr_language != "jpn" && "bg-white text-zinc-700 ring-zinc-300 hover:bg-zinc-50"]}
-            >日本語</button>
-          </div>
-        </div>
-        <p class="mt-2 text-xs text-zinc-500">Current: <span class="font-medium"><%= @ocr_language %></span></p>
-      </div>
 
       <%= if @show_camera do %>
         <!-- Camera Capture Interface -->
@@ -348,20 +340,20 @@ defmodule ParselyWeb.ScanCardLive do
           <.input field={@form[:phone]} type="tel" label="Phone" />
           <.input field={@form[:company]} type="text" label="Company" />
           <.input field={@form[:position]} type="text" label="Position" />
-          <.input field={@form[:notes]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
+          <.input field={@form[:notes_text]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
 
           <!-- Raw OCR Text Display -->
           <%= if @form.source.changes[:ocr_data] && @form.source.changes[:ocr_data][:raw_text] do %>
-            <div class="mt-6 p-4 bg-gray-50 rounded-lg border">
+            <div class="mt-6 p-4 bg-brand/10 rounded-lg border border-gray-300">
               <h3 class="text-sm font-medium text-gray-700 mb-2">Raw OCR Text:</h3>
-              <div class="space-y-1 max-h-32 overflow-y-auto">
+              <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                 <%= for {line, index} <- @form.source.changes[:ocr_data][:raw_text] |> String.split("\n") |> Enum.with_index() do %>
-                  <%= if String.trim(line) != "" do %>
+                  <%= if String.trim(line) != "" && !MapSet.member?(@assigned_ocr_lines, index) do %>
                     <button
                       type="button"
                       phx-click="toggle-line"
                       phx-value-index={index}
-                      class="w-full text-left px-3 py-2 rounded-md text-xs font-mono bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+                      class="inline-block px-3 py-1 rounded-full text-xs font-mono bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-colors"
                     >
                       <%= line %>
                     </button>
@@ -410,54 +402,75 @@ defmodule ParselyWeb.ScanCardLive do
             <div class="space-y-2">
               <p class="text-sm font-medium text-gray-700">Assign to field:</p>
               <div class="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  phx-click="assign-to-field"
-                  phx-value-field="name"
-                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div class="font-medium text-gray-900">Name</div>
-                  <div class="text-sm text-gray-500">Person's full name</div>
-                </button>
+                <%= unless MapSet.member?(@assigned_fields, "name") do %>
+                  <button
+                    type="button"
+                    phx-click="assign-to-field"
+                    phx-value-field="name"
+                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  >
+                    <div class="font-medium text-gray-900">Name</div>
+                    <div class="text-sm text-gray-500">Person's full name</div>
+                  </button>
+                <% end %>
 
-                <button
-                  type="button"
-                  phx-click="assign-to-field"
-                  phx-value-field="email"
-                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div class="font-medium text-gray-900">Email</div>
-                  <div class="text-sm text-gray-500">Email address</div>
-                </button>
+                <%= unless MapSet.member?(@assigned_fields, "email") do %>
+                  <button
+                    type="button"
+                    phx-click="assign-to-field"
+                    phx-value-field="email"
+                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  >
+                    <div class="font-medium text-gray-900">Email</div>
+                    <div class="text-sm text-gray-500">Email address</div>
+                  </button>
+                <% end %>
 
-                <button
-                  type="button"
-                  phx-click="assign-to-field"
-                  phx-value-field="phone"
-                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div class="font-medium text-gray-900">Phone</div>
-                  <div class="text-sm text-gray-500">Phone number</div>
-                </button>
+                <%= unless MapSet.member?(@assigned_fields, "phone") do %>
+                  <button
+                    type="button"
+                    phx-click="assign-to-field"
+                    phx-value-field="phone"
+                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  >
+                    <div class="font-medium text-gray-900">Phone</div>
+                    <div class="text-sm text-gray-500">Phone number</div>
+                  </button>
+                <% end %>
 
-                <button
-                  type="button"
-                  phx-click="assign-to-field"
-                  phx-value-field="company"
-                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div class="font-medium text-gray-900">Company</div>
-                  <div class="text-sm text-gray-500">Company or organization name</div>
-                </button>
+                <%= unless MapSet.member?(@assigned_fields, "company") do %>
+                  <button
+                    type="button"
+                    phx-click="assign-to-field"
+                    phx-value-field="company"
+                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  >
+                    <div class="font-medium text-gray-900">Company</div>
+                    <div class="text-sm text-gray-500">Company or organization name</div>
+                  </button>
+                <% end %>
 
+                <%= unless MapSet.member?(@assigned_fields, "position") do %>
+                  <button
+                    type="button"
+                    phx-click="assign-to-field"
+                    phx-value-field="position"
+                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  >
+                    <div class="font-medium text-gray-900">Position</div>
+                    <div class="text-sm text-gray-500">Job title or position</div>
+                  </button>
+                <% end %>
+
+                <!-- Always show Add to Notes option -->
                 <button
                   type="button"
                   phx-click="assign-to-field"
-                  phx-value-field="position"
-                  class="w-full text-left px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  phx-value-field="notes"
+                  class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                 >
-                  <div class="font-medium text-gray-900">Position</div>
-                  <div class="text-sm text-gray-500">Job title or position</div>
+                  <div class="font-medium text-gray-900">Add to Notes</div>
+                  <div class="text-sm text-gray-500">Add this text to the notes field</div>
                 </button>
               </div>
             </div>

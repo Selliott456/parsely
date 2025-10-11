@@ -22,7 +22,7 @@ defmodule ParselyWeb.DashboardLive do
               <div class="p-4 flex items-center justify-center">
           <div class="flex flex-col space-y-4 items-center justify-center w-full h-full">
                   <!-- Scan Business Card -->
-        <.link navigate={~p"/scan-card"} class="w-[70vw] max-w-md bg-mint-primary/30 rounded-lg shadow-lg border border-mint-primary hover:shadow-xl transition-shadow duration-200 p-8 flex flex-col items-center justify-center text-center min-h-[40vh]">
+        <.link navigate={~p"/scan-card"} class="w-[70vw] max-w-md bg-mint-primary/10 rounded-lg shadow-lg border border-gray-300 hover:border-gray-400 hover:shadow-xl hover:shadow-purple-500/25 transition-all duration-200 p-8 flex flex-col items-center justify-center text-center min-h-[40vh]">
                           <div class="flex flex-col items-center space-y-6">
                 <svg class="h-16 w-16 text-charcoal" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
@@ -35,7 +35,7 @@ defmodule ParselyWeb.DashboardLive do
           </.link>
 
                   <!-- View Business Cards -->
-        <.link navigate={~p"/business-cards"} class="w-[70vw] max-w-md bg-warm-white rounded-lg shadow-lg border border-cool-grey hover:shadow-xl transition-shadow duration-200 p-8 flex flex-col items-center justify-center text-center min-h-[40vh]">
+        <.link navigate={~p"/business-cards"} class="w-[70vw] max-w-md bg-mint-primary/10 rounded-lg shadow-lg border border-gray-300 hover:border-gray-400 hover:shadow-xl hover:shadow-purple-500/25 transition-all duration-200 p-8 flex flex-col items-center justify-center text-center min-h-[40vh]">
             <div class="flex flex-col items-center space-y-6">
               <svg class="h-16 w-16 text-charcoal" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>

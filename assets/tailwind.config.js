@@ -10,7 +10,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: "#FD4F00",
+        brand: "#7C3AED",
         "mint-primary": "#9FE2BF",
         "mint-bright": "#B7F5D8",
         "mint-deep": "#4DBE9F",
