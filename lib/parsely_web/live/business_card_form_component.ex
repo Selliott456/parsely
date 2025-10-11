@@ -91,6 +91,7 @@ defmodule ParselyWeb.BusinessCardFormComponent do
           <.input field={@form[:phone]} type="tel" label="Phone" />
           <.input field={@form[:company]} type="text" label="Company" />
           <.input field={@form[:position]} type="text" label="Position" />
+          <.input field={@form[:notes_text]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
         </div>
 
         <:actions>
@@ -103,6 +104,7 @@ defmodule ParselyWeb.BusinessCardFormComponent do
     </div>
     """
   end
+
 
   @impl true
   def update(%{id: _id} = assigns, socket) do
@@ -127,7 +129,7 @@ defmodule ParselyWeb.BusinessCardFormComponent do
   end
 
   def handle_event("save", %{"business_card" => business_card_params}, socket) do
-    save_business_card(socket, socket.assigns.action, business_card_params)
+    save_business_card(socket, :new, business_card_params)
   end
 
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
@@ -164,20 +166,6 @@ defmodule ParselyWeb.BusinessCardFormComponent do
      |> assign(:ocr_results, nil)}
   end
 
-  defp save_business_card(socket, :edit, business_card_params) do
-    case BusinessCards.update_business_card(socket.assigns.business_card, business_card_params) do
-      {:ok, business_card} ->
-        notify_parent({:saved, business_card})
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Business card updated successfully")
-         |> push_patch(to: socket.assigns.patch)}
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign_form(socket, changeset)}
-    end
-  end
 
   defp save_business_card(socket, :new, business_card_params) do
     user = socket.assigns.current_user

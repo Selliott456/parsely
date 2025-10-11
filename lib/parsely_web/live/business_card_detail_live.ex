@@ -11,7 +11,8 @@ defmodule ParselyWeb.BusinessCardDetailLive do
         {:ok,
          assign(socket,
            business_card: business_card,
-           page_title: "#{business_card.name || "Business Card"} - Details"
+           page_title: "#{business_card.name || "Business Card"} - Details",
+           show_delete_modal: false
          )}
     end
   rescue
@@ -22,14 +23,16 @@ defmodule ParselyWeb.BusinessCardDetailLive do
   def render(assigns) do
     ~H"""
     <div class="mx-auto max-w-4xl my-8">
-      <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-charcoal">
-          <%= @business_card.name || "Unnamed Contact" %>
-        </h1>
+      <div class="mb-6">
+        <div class="flex justify-between items-center">
+          <h1 class="text-3xl font-bold text-charcoal">
+            <%= @business_card.name || "Unnamed Contact" %>
+          </h1>
 
-        <.button_link_secondary navigate={~p"/business-cards"}>
-          ← Back to Cards
-        </.button_link_secondary>
+          <.button_link_secondary navigate={~p"/business-cards"} class="!bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand">
+            ← Back to Cards
+          </.button_link_secondary>
+        </div>
       </div>
 
       <div class="bg-white rounded-lg border border-zinc-200 p-8">
@@ -51,7 +54,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
               <%= if @business_card.phone do %>
                 <div>
-                  <label class="block text-sm font-medium text-zinc-600">Phone</label>
+
                   <p class="mt-1 text-lg text-charcoal">
                     <a href={"tel:#{@business_card.phone}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.phone %>
@@ -68,14 +71,12 @@ defmodule ParselyWeb.BusinessCardDetailLive do
             <div class="space-y-4">
               <%= if @business_card.company do %>
                 <div>
-                  <label class="block text-sm font-medium text-zinc-600">Company</label>
                   <p class="mt-1 text-lg text-charcoal"><%= @business_card.company %></p>
                 </div>
               <% end %>
 
               <%= if @business_card.position do %>
                 <div>
-                  <label class="block text-sm font-medium text-zinc-600">Position</label>
                   <p class="mt-1 text-lg text-charcoal"><%= @business_card.position %></p>
                 </div>
               <% end %>
@@ -106,7 +107,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
                     <button
                       phx-click="delete-note"
                       phx-value-index={index}
-                      class="bg-cool-grey hover:bg-slate-grey text-warm-white p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 ml-4 flex-shrink-0"
+                      class="bg-brand/10 hover:bg-brand/20 text-brand p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 ml-4 flex-shrink-0"
                     >
                       <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M9 3v1H4v2h1v13a2 2 0 002 2h10a2 2 0 002-2V6h1V4h-5V3H9zM7 6h10v13H7V6zm2 2v9h2V8H9zm4 0v9h2V8h-2z"/>
@@ -148,10 +149,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
               <% end %>
             </div>
             <div class="flex space-x-2">
-              <.button_secondary phx-click="edit_card" class="text-sm">
-                Edit
-              </.button_secondary>
-              <.button_secondary phx-click="delete_card" class="text-sm bg-red-50 text-red-600 hover:bg-red-100">
+              <.button_secondary phx-click="show-delete-modal" class="text-sm bg-red-50 text-red-600 hover:bg-red-100">
                 Delete
               </.button_secondary>
             </div>
@@ -159,12 +157,44 @@ defmodule ParselyWeb.BusinessCardDetailLive do
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <%= if @show_delete_modal do %>
+      <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="delete-modal">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+              <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mt-4">Delete Business Card</h3>
+            <div class="mt-2 px-7 py-3">
+              <p class="text-sm text-gray-500">
+                Are you sure you want to delete "<%= @business_card.name %>"? This action cannot be undone.
+              </p>
+            </div>
+            <div class="items-center px-4 py-3">
+              <button
+                phx-click="confirm-delete"
+                class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 mr-2 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+              >
+                Delete
+              </button>
+              <button
+                phx-click="cancel-delete"
+                class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-24 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
     """
   end
 
-  def handle_event("edit_card", _params, socket) do
-    {:noreply, push_navigate(socket, to: ~p"/business-cards/#{socket.assigns.business_card.id}/edit")}
-  end
 
   def handle_event("add-note", %{"note" => %{"text" => note_text}}, socket) do
     business_card = socket.assigns.business_card
@@ -213,7 +243,11 @@ defmodule ParselyWeb.BusinessCardDetailLive do
     end
   end
 
-  def handle_event("delete_card", _params, socket) do
+  def handle_event("show-delete-modal", _params, socket) do
+    {:noreply, assign(socket, show_delete_modal: true)}
+  end
+
+  def handle_event("confirm-delete", _params, socket) do
     business_card = socket.assigns.business_card
 
     case BusinessCards.delete_business_card(business_card) do
@@ -229,5 +263,9 @@ defmodule ParselyWeb.BusinessCardDetailLive do
          |> put_flash(:error, "Failed to delete business card.")
          |> push_navigate(to: ~p"/business-cards")}
     end
+  end
+
+  def handle_event("cancel-delete", _params, socket) do
+    {:noreply, assign(socket, show_delete_modal: false)}
   end
 end

@@ -350,7 +350,7 @@ defmodule ParselyWeb.ScanCardLive do
                       type="button"
                       phx-click="toggle-line"
                       phx-value-index={index}
-                      class="inline-block px-3 py-1 rounded-full text-xs font-mono bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-colors"
+                      class="inline-block px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-colors"
                     >
                       <%= line %>
                     </button>
@@ -364,7 +364,7 @@ defmodule ParselyWeb.ScanCardLive do
             <div class="pt-4 pb-8">
               <.button_primary
                 type="submit"
-                class={if @duplicate_error, do: "opacity-50 cursor-not-allowed"}
+                class={"!bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand #{if @duplicate_error, do: "opacity-50 cursor-not-allowed", else: ""}"}
                 disabled={@duplicate_error != nil}
               >
                 Save Business Card

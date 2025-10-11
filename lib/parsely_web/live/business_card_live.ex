@@ -13,7 +13,9 @@ defmodule ParselyWeb.BusinessCardLive do
        page_title: "Business Cards",
        show_form: false,
        show_details: false,
-       search_query: ""
+       search_query: "",
+       show_delete_modal: false,
+       card_to_delete: nil
      )}
   end
 
@@ -66,9 +68,15 @@ defmodule ParselyWeb.BusinessCardLive do
 
 
 
-  def handle_event("delete", %{"id" => id}, socket) do
+  def handle_event("show-delete-modal", %{"id" => id, "name" => name}, socket) do
+    card_to_delete = %{id: id, name: name}
+    {:noreply, assign(socket, show_delete_modal: true, card_to_delete: card_to_delete)}
+  end
+
+  def handle_event("confirm-delete", _params, socket) do
     user = socket.assigns.current_user
-    business_card = BusinessCards.get_business_card!(id, user.id)
+    card_id = socket.assigns.card_to_delete.id
+    business_card = BusinessCards.get_business_card!(card_id, user.id)
     {:ok, _} = BusinessCards.delete_business_card(business_card)
 
     business_cards = BusinessCards.list_business_cards(user.id)
@@ -76,7 +84,11 @@ defmodule ParselyWeb.BusinessCardLive do
     {:noreply,
      socket
      |> put_flash(:info, "Business card deleted successfully")
-     |> assign(business_cards: business_cards)}
+     |> assign(business_cards: business_cards, show_delete_modal: false, card_to_delete: nil)}
+  end
+
+  def handle_event("cancel-delete", _params, socket) do
+    {:noreply, assign(socket, show_delete_modal: false, card_to_delete: nil)}
   end
 
   def handle_event("add-note", %{"note" => note_params}, socket) do
@@ -144,15 +156,16 @@ defmodule ParselyWeb.BusinessCardLive do
     <% else %>
       <%= if @show_details and @business_card do %>
         <div class="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <.header>
-            Business Card Details
-            <:actions>
-              <.button_link_secondary navigate={~p"/business-cards"}>
-                <.icon name="hero-arrow-left" class="h-4 w-4" />
-                Back to Cards
-              </.button_link_secondary>
-            </:actions>
-          </.header>
+          <div class="mt-4">
+            <.header>
+              Business Card Details
+              <:actions>
+                <.button_link_secondary navigate={~p"/business-cards"} class="!bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand">
+                  ← Back to Cards
+                </.button_link_secondary>
+              </:actions>
+            </.header>
+          </div>
 
           <div class="mt-8 bg-white shadow rounded-lg">
             <div class="px-6 py-8">
@@ -213,7 +226,9 @@ defmodule ParselyWeb.BusinessCardLive do
                 <div class="mt-6">
                   <.simple_form for={%{}} phx-submit="add-note" class="space-y-4">
                     <.input
-                      field={%{name: "note[text]", type: "textarea"}}
+                      name="note[text]"
+                      type="textarea"
+                      value=""
                       label="Add Note"
                       placeholder="Enter a note about this contact..."
                       rows="3"
@@ -231,7 +246,7 @@ defmodule ParselyWeb.BusinessCardLive do
         <div class="mx-auto my-4 max-w-7xl px-4 sm:px-6 lg:px-8">
           <.header>
             <:actions>
-              <.button_link patch={~p"/scan-card"}>
+              <.button_link patch={~p"/scan-card"} class="hover:text-white">
                 <svg class="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
@@ -241,8 +256,8 @@ defmodule ParselyWeb.BusinessCardLive do
           </.header>
 
           <!-- Search Bar -->
-          <div class="mt-6 flex justify-center">
-            <div class="w-[70vw] max-w-md">
+          <div class="mt-6">
+            <div class="w-full">
               <div class="flex items-center space-x-4">
                 <div class="flex-1">
                   <form phx-change="search" class="relative">
@@ -265,8 +280,8 @@ defmodule ParselyWeb.BusinessCardLive do
                     phx-click="clear-search"
                     class="inline-flex items-center"
                   >
-                    <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 18L18 6M6 6l12 12"/>
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                     Clear
                   </.button_secondary>
@@ -277,8 +292,9 @@ defmodule ParselyWeb.BusinessCardLive do
 
           <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
             <%= for business_card <- @business_cards do %>
-              <.link navigate={~p"/business-cards/#{business_card.id}"} class="block h-full">
-                <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer h-full flex flex-col min-h-[12rem]">
+              <div class="relative">
+                <.link navigate={~p"/business-cards/#{business_card.id}"} class="block h-full">
+                  <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer h-full flex flex-col min-h-[12rem]">
                   <div class="p-6 flex-1 flex flex-col">
                     <div class="flex items-center">
                       <div class="flex-shrink-0">
@@ -311,22 +327,22 @@ defmodule ParselyWeb.BusinessCardLive do
                       </div>
                     <% end %>
 
-                    <div class="mt-auto pt-4 flex justify-end">
-                    <button
-                      phx-click="delete"
-                      phx-value-id={business_card.id}
-                      data-confirm="Are you sure you want to delete this business card?"
-                      class="bg-cool-grey hover:bg-slate-grey text-warm-white p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105"
-                      onclick="event.stopPropagation();"
-                    >
-                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 3v1H4v2h1v13a2 2 0 002 2h10a2 2 0 002-2V6h1V4h-5V3H9zM7 6h10v13H7V6zm2 2v9h2V8H9zm4 0v9h2V8h-2z"/>
-                      </svg>
-                    </button>
-                  </div>
                   </div>
                 </div>
-              </.link>
+                </.link>
+
+                <!-- Delete button positioned absolutely outside the link -->
+                <button
+                  phx-click="show-delete-modal"
+                  phx-value-id={business_card.id}
+                  phx-value-name={business_card.name}
+                  class="absolute bottom-2 right-2 bg-brand/10 hover:bg-brand/20 text-brand p-2 rounded-full shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 z-10"
+                >
+                  <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 3v1H4v2h1v13a2 2 0 002 2h10a2 2 0 002-2V6h1V4h-5V3H9zM7 6h10v13H7V6zm2 2v9h2V8H9zm4 0v9h2V8h-2z"/>
+                  </svg>
+                </button>
+              </div>
             <% end %>
           </div>
 
@@ -353,6 +369,41 @@ defmodule ParselyWeb.BusinessCardLive do
           <% end %>
         </div>
       <% end %>
+    <% end %>
+
+    <!-- Delete Confirmation Modal -->
+    <%= if @show_delete_modal do %>
+      <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="delete-modal">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+              <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mt-4">Delete Business Card</h3>
+            <div class="mt-2 px-7 py-3">
+              <p class="text-sm text-gray-500">
+                Are you sure you want to delete "<%= @card_to_delete.name %>"? This action cannot be undone.
+              </p>
+            </div>
+            <div class="items-center px-4 py-3">
+              <button
+                phx-click="confirm-delete"
+                class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 mr-2 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+              >
+                Delete
+              </button>
+              <button
+                phx-click="cancel-delete"
+                class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-24 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     <% end %>
     """
   end
