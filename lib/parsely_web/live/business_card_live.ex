@@ -196,6 +196,13 @@ defmodule ParselyWeb.BusinessCardLive do
                     <p class="mt-1 text-lg text-zinc-900"><%= @business_card.phone %></p>
                   </div>
                 <% end %>
+
+                <%= if @business_card.address do %>
+                  <div>
+                    <h3 class="text-sm font-medium text-zinc-500">Address</h3>
+                    <p class="mt-1 text-lg text-zinc-900"><%= @business_card.address %></p>
+                  </div>
+                <% end %>
               </div>
 
               <!-- Notes Section -->
@@ -225,14 +232,13 @@ defmodule ParselyWeb.BusinessCardLive do
                 <!-- Add Note Form -->
                 <div class="mt-6">
                   <.simple_form for={%{}} phx-submit="add-note" class="space-y-4">
-                    <.input
+                    <textarea
                       name="note[text]"
-                      type="textarea"
-                      value=""
-                      label="Add Note"
                       placeholder="Enter a note about this contact..."
                       rows="3"
-                    />
+                      class="block w-full border border-zinc-300 rounded-md px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-mint-primary focus:border-mint-primary"
+                      required
+                    ></textarea>
                     <:actions>
                       <.button_primary>Add Note</.button_primary>
                     </:actions>
@@ -319,13 +325,22 @@ defmodule ParselyWeb.BusinessCardLive do
                       </div>
                     <% end %>
 
-                    <%= if business_card.phone do %>
+                    <%= if business_card.primary_phone do %>
                       <div class="mt-2">
                         <p class="text-sm text-zinc-600">
-                          <span class="font-medium">Phone:</span> <%= business_card.phone %>
+                          <span class="font-medium">Phone:</span> <%= business_card.primary_phone %>
                         </p>
                       </div>
                     <% end %>
+
+                    <%= if business_card.secondary_phone do %>
+                      <div class="mt-1">
+                        <p class="text-sm text-zinc-600">
+                          <span class="font-medium">Phone 2:</span> <%= business_card.secondary_phone %>
+                        </p>
+                      </div>
+                    <% end %>
+
 
                   </div>
                 </div>

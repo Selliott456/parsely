@@ -383,8 +383,16 @@ defmodule Parsely.JapaneseOCRService do
       # Look for First Last pattern (capitalized first letter, rest can be lowercase or uppercase)
       # But exclude common job title words
       down = String.downcase(line)
-      is_name_pattern = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+$/, line) or
-                       Regex.match?(~r/^[\p{Hiragana}\p{Katakana}\p{Han}]+[\s・][\p{Hiragana}\p{Katakana}\p{Han}]+$/u, line)
+      # English name patterns (including with initials)
+      is_english_basic = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+$/, line)
+      is_english_with_initial = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z]\.?\s+[A-Z][A-Za-z]+$/, line)
+      is_english_multiple_initials = Regex.match?(~r/^[A-Z][A-Za-z]+(\s+[A-Z]\.?)+\s+[A-Z][A-Za-z]+$/, line)
+      is_english_with_title = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+,\s*[A-Z]\.?[A-Z]?\.?$/, line)
+
+      # Japanese name patterns
+      is_japanese_name = Regex.match?(~r/^[\p{Hiragana}\p{Katakana}\p{Han}]+[\s・][\p{Hiragana}\p{Katakana}\p{Han}]+$/u, line)
+
+      is_name_pattern = is_english_basic or is_english_with_initial or is_english_multiple_initials or is_english_with_title or is_japanese_name
 
       # Japanese job title exclusions
       is_not_job_title = not Enum.any?([

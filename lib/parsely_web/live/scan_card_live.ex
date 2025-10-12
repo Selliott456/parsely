@@ -71,6 +71,7 @@ defmodule ParselyWeb.ScanCardLive do
         IO.puts("Updated socket assigns: #{inspect(updated_socket.assigns)}")
         IO.puts("Form field values: name=#{updated_socket.assigns.form[:name].value}, email=#{updated_socket.assigns.form[:email].value}")
         IO.puts("Form field values: phone=#{updated_socket.assigns.form[:phone].value}, company=#{updated_socket.assigns.form[:company].value}, position=#{updated_socket.assigns.form[:position].value}")
+        IO.puts("Form field values: address=#{updated_socket.assigns.form[:address].value}")
 
         {:noreply, assign(updated_socket, :processing_ocr, false)}
 
@@ -334,9 +335,11 @@ defmodule ParselyWeb.ScanCardLive do
         >
           <.input field={@form[:name]} type="text" label="Name" required />
           <.input field={@form[:email]} type="email" label="Email" phx-change="email-changed" />
-          <.input field={@form[:phone]} type="tel" label="Phone" />
+          <.input field={@form[:primary_phone]} type="tel" label="Primary Phone" />
+          <.input field={@form[:secondary_phone]} type="tel" label="Secondary Phone" />
           <.input field={@form[:company]} type="text" label="Company" />
           <.input field={@form[:position]} type="text" label="Position" />
+          <.input field={@form[:address]} type="textarea" label="Address" placeholder="Enter the business address..." rows="2" />
           <.input field={@form[:notes_text]} type="textarea" label="Notes" placeholder="Add any notes about this contact..." rows="3" />
 
           <!-- Raw OCR Text Display -->

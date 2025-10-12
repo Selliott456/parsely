@@ -5,9 +5,11 @@ defmodule Parsely.BusinessCards.BusinessCard do
   schema "business_cards" do
     field :name, :string
     field :email, :string
-    field :phone, :string
+    field :primary_phone, :string
+    field :secondary_phone, :string
     field :company, :string
     field :position, :string
+    field :address, :string
     field :image_url, :string
     field :ocr_data, :map
     field :notes, {:array, :map}, default: []
@@ -21,7 +23,7 @@ defmodule Parsely.BusinessCards.BusinessCard do
   @doc false
   def changeset(business_card, attrs) do
     business_card
-    |> cast(attrs, [:name, :email, :phone, :company, :position, :image_url, :ocr_data, :user_id, :notes, :notes_text])
+    |> cast(attrs, [:name, :email, :primary_phone, :secondary_phone, :company, :position, :address, :image_url, :ocr_data, :user_id, :notes, :notes_text])
     |> validate_required([:user_id])
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have the @ sign and no spaces")
     |> foreign_key_constraint(:user_id)
