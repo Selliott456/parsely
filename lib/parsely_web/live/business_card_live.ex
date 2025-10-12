@@ -161,7 +161,7 @@ defmodule ParselyWeb.BusinessCardLive do
               Business Card Details
               <:actions>
                 <.button_link_secondary navigate={~p"/business-cards"} class="!bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand">
-                  ← Back to Cards
+                  ← Cards
                 </.button_link_secondary>
               </:actions>
             </.header>
@@ -296,7 +296,8 @@ defmodule ParselyWeb.BusinessCardLive do
             </div>
           </div>
 
-          <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+          <div class="mt-8 flex justify-center">
+            <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
             <%= for business_card <- @business_cards do %>
               <div class="relative">
                 <.link navigate={~p"/business-cards/#{business_card.id}"} class="block h-full">
@@ -359,6 +360,7 @@ defmodule ParselyWeb.BusinessCardLive do
                 </button>
               </div>
             <% end %>
+            </div>
           </div>
 
           <%= if Enum.empty?(@business_cards) do %>

@@ -345,7 +345,7 @@ defmodule ParselyWeb.ScanCardLive do
           <!-- Raw OCR Text Display -->
           <%= if @form.source.changes[:ocr_data] && @form.source.changes[:ocr_data][:raw_text] do %>
             <div class="mt-6 p-4 bg-brand/10 rounded-lg border border-gray-300">
-              <h3 class="text-sm font-medium text-gray-700 mb-2">Raw OCR Text:</h3>
+              <label class="block text-sm font-semibold leading-6 text-zinc-800 mb-2">Add information manually:</label>
               <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                 <%= for {line, index} <- @form.source.changes[:ocr_data][:raw_text] |> String.split("\n") |> Enum.with_index() do %>
                   <%= if String.trim(line) != "" && !MapSet.member?(@assigned_ocr_lines, index) do %>

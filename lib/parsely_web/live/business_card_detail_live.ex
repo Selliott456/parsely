@@ -30,7 +30,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
           </h1>
 
           <.button_link_secondary navigate={~p"/business-cards"} class="!bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand">
-            ← Back to Cards
+            ← Cards
           </.button_link_secondary>
         </div>
       </div>
@@ -100,7 +100,6 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
         <!-- Notes -->
         <div class="mt-8 pt-8 border-t border-zinc-200">
-          <h2 class="text-xl font-semibold text-charcoal mb-4">Notes</h2>
 
           <%= if @business_card.notes && length(@business_card.notes) > 0 do %>
             <div class="space-y-4 mb-6">
@@ -134,10 +133,9 @@ defmodule ParselyWeb.BusinessCardDetailLive do
           <% end %>
 
           <!-- Add Note Form -->
-          <div class="bg-white border border-zinc-200 rounded-lg p-4">
+          <div>
             <form phx-submit="add-note" class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-zinc-600 mb-2">Add Note</label>
                 <textarea
                   name="note[text]"
                   placeholder="Enter a note about this contact..."
