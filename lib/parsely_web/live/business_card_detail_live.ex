@@ -38,13 +38,12 @@ defmodule ParselyWeb.BusinessCardDetailLive do
       <div class="bg-white rounded-lg border border-zinc-200 p-8">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
           <!-- Contact Information -->
-          <div>
+          <div class="md:pr-20 md:border-r md:border-zinc-200">
             <h2 class="text-xl font-semibold text-charcoal mb-4">Contact Information</h2>
             <div class="space-y-4">
               <%= if @business_card.email do %>
                 <div>
-                  <label class="block text-sm font-medium text-zinc-600">Email</label>
-                  <p class="mt-1 text-lg text-charcoal">
+                  <p class="text-lg text-charcoal break-words">
                     <a href={"mailto:#{@business_card.email}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.email %>
                     </a>
@@ -54,8 +53,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
               <%= if @business_card.primary_phone do %>
                 <div>
-                  <p class="text-sm font-medium text-zinc-600">Primary Phone</p>
-                  <p class="mt-1 text-lg text-charcoal">
+                  <p class="text-lg text-charcoal break-words">
                     <a href={"tel:#{@business_card.primary_phone}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.primary_phone %>
                     </a>
@@ -65,8 +63,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
               <%= if @business_card.secondary_phone do %>
                 <div>
-                  <p class="text-sm font-medium text-zinc-600">Secondary Phone</p>
-                  <p class="mt-1 text-lg text-charcoal">
+                  <p class="text-lg text-charcoal break-words">
                     <a href={"tel:#{@business_card.secondary_phone}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.secondary_phone %>
                     </a>
@@ -77,7 +74,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
           </div>
 
           <!-- Professional Information -->
-          <div>
+          <div class="md:pl-8">
             <h2 class="text-xl font-semibold text-charcoal mb-4">Professional Information</h2>
             <div class="space-y-4">
               <%= if @business_card.company do %>
@@ -93,9 +90,8 @@ defmodule ParselyWeb.BusinessCardDetailLive do
               <% end %>
 
               <%= if @business_card.address do %>
-                <div>
-                  <p class="text-sm font-medium text-zinc-600">Address</p>
-                  <p class="mt-1 text-lg text-charcoal"><%= @business_card.address %></p>
+                <div class="pt-4 md:border-t border-zinc-200">
+                  <p class="text-lg text-charcoal"><%= @business_card.address %></p>
                 </div>
               <% end %>
             </div>
