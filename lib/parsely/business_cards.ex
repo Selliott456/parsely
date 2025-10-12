@@ -133,7 +133,7 @@ defmodule Parsely.BusinessCards do
 
   @doc """
   Searches business cards for a user by query across multiple fields.
-  Searches name, email, phone, company, and position fields.
+  Searches name, email, primary_phone, secondary_phone, company, position, and address fields.
   """
   def search_business_cards(user_id, query) when is_binary(query) and byte_size(query) > 0 do
     search_term = "%#{query}%"
@@ -143,9 +143,11 @@ defmodule Parsely.BusinessCards do
     |> where([bc],
       ilike(bc.name, ^search_term) or
       ilike(bc.email, ^search_term) or
-      ilike(bc.phone, ^search_term) or
+      ilike(bc.primary_phone, ^search_term) or
+      ilike(bc.secondary_phone, ^search_term) or
       ilike(bc.company, ^search_term) or
-      ilike(bc.position, ^search_term)
+      ilike(bc.position, ^search_term) or
+      ilike(bc.address, ^search_term)
     )
     |> order_by([bc], [desc: bc.inserted_at])
     |> Repo.all()
@@ -157,7 +159,7 @@ defmodule Parsely.BusinessCards do
   Checks for duplicates by email (case-insensitive) or phone (digits only).
   Returns true if either matches for the given user.
   """
-  def duplicate_exists?(user_id, email, phone) do
+  def duplicate_exists?(user_id, email, _phone) do
     # Simple check: if email exists and matches any existing email for this user
     case email do
       value when is_binary(value) ->
