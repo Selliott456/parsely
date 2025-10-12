@@ -403,10 +403,16 @@ defmodule Parsely.OCRService do
         is_name_with_title = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+,\s*[A-Z]\.?[A-Z]?\.?$/, line)
         is_name_with_title_all_caps = Regex.match?(~r/^[A-Z]+\s+[A-Z]+,\s*[A-Z]\.?[A-Z]?\.?$/, line)
 
+        # Pattern for names with credentials (e.g., "Arthur D. Casciato, Ph.D.")
+        is_name_with_credentials = Regex.match?(~r/^[A-Z][A-Za-z]+\s+[A-Z]\.?\s+[A-Z][A-Za-z]+,\s*[A-Z]\.?[A-Z]?\.?/, line)
+
         # Check if it looks like a person name (not a company/job title/address)
         company_keywords = ~w(ltd limited inc incorporated corp corporation company co center centre university college school institute foundation)
         address_keywords = ~w(way street avenue road drive lane boulevard suite apt apartment unit floor room)
         state_codes = ~w(AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY)
+
+        # Common city/place names that should not be person names
+        place_names = ~w(new york new jersey new brunswick los angeles san francisco chicago boston philadelphia houston dallas miami atlanta seattle denver phoenix detroit minneapolis portland las vegas orlando tampa austin nashville charlotte raleigh richmond columbus cleveland pittsburgh buffalo rochester syracuse albany binghamton utica schenectady troy poughkeepsie newburgh kingston middletown newburgh)
 
         contains_company_keywords = Enum.any?(company_keywords, &String.contains?(String.downcase(line), &1))
         contains_address_keywords = Enum.any?(address_keywords, &String.contains?(String.downcase(line), &1))
@@ -414,11 +420,16 @@ defmodule Parsely.OCRService do
           # Only match state codes as standalone words (with word boundaries)
           Regex.match?(~r/\b#{state_code}\b/, String.upcase(line))
         end)
+        contains_place_name = Enum.any?(place_names, fn place_name ->
+          # Check if the line contains a common place name
+          String.contains?(String.downcase(line), place_name)
+        end)
         has_zipcode = Regex.match?(~r/\b\d{5}(-\d{4})?\b/, line)
 
         looks_like_person = not contains_company_keywords and
                            not contains_address_keywords and
                            not contains_state_code and
+                           not contains_place_name and
                            not has_zipcode
 
         IO.puts("  Analyzing line: '#{line}'")
@@ -434,14 +445,15 @@ defmodule Parsely.OCRService do
         IO.puts("    Is name with multiple initials: #{is_name_with_multiple_initials}")
         IO.puts("    Is name with title: #{is_name_with_title}")
         IO.puts("    Is name with title (all caps): #{is_name_with_title_all_caps}")
+        IO.puts("    Is name with credentials: #{is_name_with_credentials}")
         IO.puts("    Looks like person: #{looks_like_person}")
 
         # Score based on format and likelihood
+        # Names must be at least two words (no single word names)
         score = 0
-        score = if is_capitalized_name and looks_like_person, do: score + 10, else: score
-        score = if is_mixed_case_name and looks_like_person, do: score + 8, else: score
-        score = if is_all_caps_name and looks_like_person, do: score + 6, else: score
-        score = if is_single_word and looks_like_person, do: score + 3, else: score
+        score = if is_capitalized_name and looks_like_person and not is_single_word, do: score + 10, else: score
+        score = if is_mixed_case_name and looks_like_person and not is_single_word, do: score + 8, else: score
+        score = if is_all_caps_name and looks_like_person and not is_single_word, do: score + 6, else: score
 
         # Higher scores for names with initials (they're very common and specific)
         score = if is_name_with_initial and looks_like_person, do: score + 12, else: score
@@ -454,6 +466,7 @@ defmodule Parsely.OCRService do
         # Very high scores for names with titles/credentials (very specific)
         score = if is_name_with_title and looks_like_person, do: score + 15, else: score
         score = if is_name_with_title_all_caps and looks_like_person, do: score + 14, else: score
+        score = if is_name_with_credentials and looks_like_person, do: score + 16, else: score
 
         {score, line}
       end)
