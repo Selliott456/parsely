@@ -103,10 +103,37 @@ defmodule Parsely.Parsing.English do
   end
 
   @doc """
+  Extracts email addresses and returns {email, confidence} tuple.
+  """
+  def email(text) do
+    emails = extract_emails(text)
+    email = List.first(emails)
+    confidence = case email do
+      nil -> 0.0
+      e when is_binary(e) -> 0.95  # Very high confidence for valid email format
+    end
+    {email, confidence}
+  end
+
+  @doc """
   Extracts phone numbers from text using libphonenumber.
   """
   def extract_phones(text) do
     Parsely.Phone.extract_all(text)
+  end
+
+  @doc """
+  Extracts phone numbers and returns {phones, confidence} tuple.
+  """
+  def phones(text) do
+    phones = extract_phones(text)
+    confidence = case phones do
+      [] -> 0.0
+      [_] -> 0.9
+      [_, _] -> 0.8
+      _ -> 0.7  # Many phones might indicate lower confidence
+    end
+    {phones, confidence}
   end
 
   @doc """
@@ -123,6 +150,19 @@ defmodule Parsely.Parsing.English do
   end
 
   @doc """
+  Extracts names and returns {name, confidence} tuple.
+  """
+  def name(text) do
+    names = extract_names(text)
+    name = List.first(names)
+    confidence = case name do
+      nil -> 0.0
+      n when is_binary(n) -> 0.8
+    end
+    {name, confidence}
+  end
+
+  @doc """
   Extracts company names from text using precompiled patterns.
   """
   def extract_companies(text) do
@@ -133,6 +173,19 @@ defmodule Parsely.Parsing.English do
     |> Enum.map(&String.trim/1)
     |> Enum.filter(&valid_company?/1)
     |> Enum.uniq()
+  end
+
+  @doc """
+  Extracts company names and returns {company, confidence} tuple.
+  """
+  def company(text) do
+    companies = extract_companies(text)
+    company = List.first(companies)
+    confidence = case company do
+      nil -> 0.0
+      c when is_binary(c) -> 0.7
+    end
+    {company, confidence}
   end
 
   @doc """
@@ -149,6 +202,19 @@ defmodule Parsely.Parsing.English do
   end
 
   @doc """
+  Extracts positions and returns {position, confidence} tuple.
+  """
+  def position(text) do
+    positions = extract_positions(text)
+    position = List.first(positions)
+    confidence = case position do
+      nil -> 0.0
+      p when is_binary(p) -> 0.7
+    end
+    {position, confidence}
+  end
+
+  @doc """
   Extracts addresses from text using precompiled patterns.
   """
   def extract_addresses(text) do
@@ -159,6 +225,19 @@ defmodule Parsely.Parsing.English do
     |> Enum.map(&String.trim/1)
     |> Enum.filter(&valid_address?/1)
     |> Enum.uniq()
+  end
+
+  @doc """
+  Extracts addresses and returns {address, confidence} tuple.
+  """
+  def address(text) do
+    addresses = extract_addresses(text)
+    address = List.first(addresses)
+    confidence = case address do
+      nil -> 0.0
+      a when is_binary(a) -> 0.6
+    end
+    {address, confidence}
   end
 
   # Private helper functions
