@@ -51,10 +51,6 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-# Import environment specific config. This must remain at the bottom
-# of this file so it overrides the configuration defined above.
-import_config "#{config_env()}.exs"
-
 # OCR Configuration
 config :parsely, :ocr_client, :space  # Options: :space, :mock, :tesseract
 
@@ -75,3 +71,7 @@ config :parsely, :ocr,
     max_requests: 500,  # OCR.space free tier limit
     window_ms: 3_600_000  # 1 hour window
   ]
+
+# Import environment specific config. This must remain at the bottom
+# of this file so it overrides the configuration defined above.
+import_config "#{config_env()}.exs"

@@ -2,6 +2,8 @@ defmodule ParselyWeb.BusinessCardFormComponent do
   use ParselyWeb, :live_component
 
   alias Parsely.BusinessCards
+  alias Parsely.OCR
+  alias Parsely.BusinessCard
 
   @impl true
   def render(assigns) do
@@ -135,37 +137,39 @@ defmodule ParselyWeb.BusinessCardFormComponent do
   end
 
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
-    # Here you would typically:
-    # 1. Upload the photo to S3
-    # 2. Send it to OCR service
-    # 3. Extract the data
+    # Process OCR synchronously for now (can be made async later if needed)
+    case OCR.extract_business_card_info(photo_data, "eng") do
+      {:ok, ocr_results} ->
+        # Convert the struct to a map for form population
+        ocr_map = BusinessCard.to_map(ocr_results)
 
-    # For now, we'll simulate OCR results
-    ocr_results = %{
-      "name" => "John Doe",
-      "email" => "john.doe@example.com",
-      "phone" => "+1 (555) 123-4567",
-      "company" => "Example Corp",
-      "position" => "Software Engineer"
-    }
+        changeset =
+          socket.assigns.form.source
+          |> BusinessCards.change_business_card(ocr_map)
+          |> Map.put(:action, :validate)
 
-    changeset =
-      socket.assigns.form.source
-      |> BusinessCards.change_business_card(ocr_results)
-      |> Map.put(:action, :validate)
+        {:noreply,
+         socket
+         |> assign(:photo_data, photo_data)
+         |> assign(:ocr_results, ocr_map)
+         |> assign(:processing_ocr, false)
+         |> assign_form(changeset)}
 
-    {:noreply,
-     socket
-     |> assign(:photo_data, photo_data)
-     |> assign(:ocr_results, ocr_results)
-     |> assign_form(changeset)}
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to process image: #{reason}")
+         |> assign(:photo_data, photo_data)
+         |> assign(:processing_ocr, false)}
+    end
   end
 
   def handle_event("retake-photo", _params, socket) do
     {:noreply,
      socket
      |> assign(:photo_data, nil)
-     |> assign(:ocr_results, nil)}
+     |> assign(:ocr_results, nil)
+     |> assign(:processing_ocr, false)}
   end
 
 

@@ -3,7 +3,7 @@ defmodule ParselyWeb.ScanCardLive do
 
   alias Parsely.BusinessCards
   alias Parsely.BusinessCards.BusinessCard
-  alias Parsely.OCRService
+  alias Parsely.OCR
   alias Parsely.ImageService
 
   def mount(_params, _session, socket) do
@@ -37,7 +37,7 @@ defmodule ParselyWeb.ScanCardLive do
     case ImageService.upload_image(photo_data, "business_card.jpg") do
       {:ok, image_url} ->
         # Then process the image with OCR
-        {:ok, ocr_results} = OCRService.extract_business_card_info(photo_data, socket.assigns.ocr_language)
+        {:ok, ocr_results} = OCR.extract_business_card_info(photo_data, language: socket.assigns.ocr_language)
 
         # Add the image URL to the OCR results
         ocr_results = Map.put(ocr_results, :image_url, image_url)

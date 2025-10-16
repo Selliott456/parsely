@@ -68,6 +68,9 @@ config :parsely, ParselyWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :parsely, dev_routes: true
 
+# Use Tesseract as the default OCR client in development (no API key required)
+config :parsely, :ocr_client, :tesseract
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
 
