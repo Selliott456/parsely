@@ -2,32 +2,24 @@
 # and its dependencies with the aid of the Config module.
 #
 # This configuration file is loaded before any dependency and
-# is restricted to this project.
+# is restricted to this project. If another project (or dependency)
+# is using this project as a dependency, the config
+# files in the dependency are not automatically loaded.
+# See the Config module documentation for more information.
 
 # General application configuration
 import Config
 
-config :parsely,
-  ecto_repos: [Parsely.Repo]
-
 # Configures the endpoint
 config :parsely, ParselyWeb.Endpoint,
   url: [host: "localhost"],
+  adapter: Phoenix.Endpoint.Cowboy2Adapter,
   render_errors: [
     formats: [html: ParselyWeb.ErrorHTML, json: ParselyWeb.ErrorJSON],
     layout: false
   ],
   pubsub_server: Parsely.PubSub,
-  live_view: [signing_salt: "qQuN+ODR"]
-
-# Configures the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
-config :parsely, Parsely.Mailer, adapter: Swoosh.Adapters.Local
+  live_view: [signing_salt: "your_signing_salt_here"]
 
 # Configure esbuild (the version is required)
 config :esbuild,
@@ -41,7 +33,7 @@ config :esbuild,
 
 # Configure tailwind (the version is required)
 config :tailwind,
-  version: "3.2.7",
+  version: "3.3.0",
   default: [
     args: ~w(
       --config=tailwind.config.js
@@ -62,3 +54,6 @@ config :phoenix, :json_library, Jason
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
+
+# OCR Configuration
+config :parsely, :ocr_client, :space  # Options: :space, :mock

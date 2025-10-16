@@ -3,98 +3,74 @@ defmodule Parsely.OCRService do
   Service for extracting text from business card images using OCR.
   """
 
+  alias Parsely.Parsing.BusinessCardParser
+
+  defp client do
+    case Application.get_env(:parsely, :ocr_client, :space) do
+      :space -> Parsely.OCR.SpaceClient
+      :mock -> Parsely.OCR.MockClient
+      client when is_atom(client) -> client
+    end
+  end
+
   @doc """
   Extracts text from a base64 encoded image and parses it for business card information.
   Accepts an OCR language code (e.g., "eng", "jpn", or "eng,jpn").
   """
   def extract_business_card_info(base64_image, language \\ "eng") do
-    case call_ocr_api(base64_image, language) do
-      {:ok, text} ->
-        parse_business_card_text(text, language)
-    end
-  end
+    clean = String.replace(base64_image, ~r/^data:image\/[^;]+;base64,/, "")
 
-  defp call_ocr_api(base64_image, language) do
-    # Remove the data:image/jpeg;base64, prefix if present
-    clean_base64 = String.replace(base64_image, ~r/^data:image\/[^;]+;base64,/, "")
-
-    # Try to use a free OCR API (OCR.space)
-    case call_ocrspace_api(clean_base64, language) do
-      {:ok, text} ->
-        {:ok, text}
-      {:error, _reason} ->
-        # Fallback to mock data for testing
-        {:ok, """
+    with {:ok, text, _meta} <- client().parse_base64_image(clean, language: language),
+         {:ok, business_card} <- BusinessCardParser.parse(text, language: language) do
+      # Convert to map format for backward compatibility
+      {:ok, Parsely.BusinessCard.to_map(business_card)}
+    else
+      {:error, _} ->
+        # Optional: feature-flag the mock fallback only in :dev/:test
+        mock_text = """
         John Doe
         Software Engineer
         Example Corp
         john.doe@example.com
         +1 (555) 123-4567
-        """}
-    end
-  end
-
-  defp call_ocrspace_api(base64_data, language) do
-    # OCR.space free API (limited to 500 requests per day)
-    url = "https://api.ocr.space/parse/image"
-
-    headers = [
-      {"Content-Type", "application/x-www-form-urlencoded"}
-    ]
-
-    # Sanitize language: allow common combos; default to eng
-    lang = if language in ["eng", "jpn", "eng,jpn", "jpn,eng"], do: language, else: "eng"
-
-    body = URI.encode_query(%{
-      "apikey" => "K81724188988957", # Free API key
-      "base64Image" => "data:image/jpeg;base64,#{base64_data}",
-      "language" => lang,
-      "isOverlayRequired" => "false",
-      "filetype" => "jpg"
-    })
-
-    case HTTPoison.post(url, body, headers, [timeout: 30000, recv_timeout: 30000]) do
-      {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
-        case Jason.decode(response_body) do
-          {:ok, %{"ParsedResults" => [%{"ParsedText" => text} | _]}} ->
-            {:ok, text}
-          {:ok, %{"ParsedResults" => []}} ->
-            {:error, "No text found in image"}
-          {:ok, %{"ErrorMessage" => error}} ->
-            {:error, "OCR API error: #{error}"}
-          {:error, _} ->
-            {:error, "Failed to parse OCR API response"}
+        """
+        case BusinessCardParser.parse(mock_text, language: language) do
+          {:ok, business_card} -> {:ok, Parsely.BusinessCard.to_map(business_card)}
+          error -> error
         end
-
-      {:ok, %HTTPoison.Response{status_code: status_code}} ->
-        {:error, "OCR API returned status code: #{status_code}"}
-
-      {:error, %HTTPoison.Error{reason: reason}} ->
-        {:error, "HTTP request failed: #{reason}"}
     end
   end
 
-  defp parse_business_card_text(text, language) do
-    # Clean up the text
-    clean_text = text
-      |> String.replace(~r/\r\n/, "\n")
-      |> String.replace(~r/\r/, "\n")
-      |> String.trim()
+  @doc """
+  Extracts business card information and returns the typed struct.
 
-    # Process of elimination approach:
-    # 1. Extract email and phone first (easily identified)
-    # 2. Extract position based on scoring
-    # 3. Extract name based on format (capitalization)
-    # 4. Extract company using keywords and remaining lines
+  This is the new recommended API that returns a Parsely.BusinessCard struct
+  with confidence scores.
+  """
+  def extract_business_card_struct(base64_image, language \\ "eng") do
+    clean = String.replace(base64_image, ~r/^data:image\/[^;]+;base64,/, "")
 
-    if String.contains?(language, "jpn") do
-      Parsely.JapaneseOCRService.parse_business_card_text(clean_text)
+    with {:ok, text, _meta} <- client().parse_base64_image(clean, language: language),
+         {:ok, business_card} <- BusinessCardParser.parse(text, language: language) do
+      {:ok, business_card}
     else
-      parse_english_business_card(clean_text)
+      {:error, _} ->
+        # Optional: feature-flag the mock fallback only in :dev/:test
+        mock_text = """
+        John Doe
+        Software Engineer
+        Example Corp
+        john.doe@example.com
+        +1 (555) 123-4567
+        """
+        BusinessCardParser.parse(mock_text, language: language)
     end
   end
 
-  defp parse_english_business_card(text) do
+
+
+
+  def parse_english_business_card(text) do
     # Step 1: Extract email and phones (easily identified)
     email = find_email(text)
     phones = find_phones(text)
@@ -738,8 +714,7 @@ defmodule Parsely.OCRService do
     # Test with a simple base64 image (1x1 pixel)
     test_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwA/8A"
 
-    {:ok, result} = extract_business_card_info(test_image, "eng")
-    {:ok, result}
+    extract_business_card_info(test_image, "eng")
   end
 
   @doc """
@@ -749,15 +724,8 @@ defmodule Parsely.OCRService do
     # Test with a simple base64 image (1x1 pixel)
     test_image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwA/8A"
 
-    # Remove the data:image/jpeg;base64, prefix
-    clean_base64 = String.replace(test_image, ~r/^data:image\/[^;]+;base64,/, "")
-
-    case call_ocrspace_api(clean_base64, "eng") do
-      {:ok, text} ->
-        {:ok, text}
-      {:error, reason} ->
-        {:error, reason}
-    end
+    clean = String.replace(test_image, ~r/^data:image\/[^;]+;base64,/, "")
+    client().parse_base64_image(clean, language: "eng")
   end
 
   @doc """
