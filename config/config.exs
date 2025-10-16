@@ -56,4 +56,22 @@ config :phoenix, :json_library, Jason
 import_config "#{config_env()}.exs"
 
 # OCR Configuration
-config :parsely, :ocr_client, :space  # Options: :space, :mock
+config :parsely, :ocr_client, :space  # Options: :space, :mock, :tesseract
+
+# OCR HTTP Client Configuration
+config :parsely, :ocr,
+  timeout: 30_000,
+  receive_timeout: 30_000,
+  connect_timeout: 10_000,
+  retry_attempts: 3,
+  retry_backoff_base: 100,
+  retry_backoff_max: 5_000,
+  circuit_breaker: [
+    failure_threshold: 5,
+    recovery_timeout: 60_000,
+    half_open_max_calls: 3
+  ],
+  rate_limit: [
+    max_requests: 500,  # OCR.space free tier limit
+    window_ms: 3_600_000  # 1 hour window
+  ]

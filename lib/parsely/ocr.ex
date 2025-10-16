@@ -76,6 +76,7 @@ defmodule Parsely.OCR do
     case Application.get_env(:parsely, :ocr_client, :space) do
       :space -> Parsely.OCR.SpaceClient
       :mock -> Parsely.OCR.MockClient
+      :tesseract -> Parsely.OCR.TesseractClient
       client when is_atom(client) -> client
     end
   end

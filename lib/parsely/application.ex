@@ -16,6 +16,8 @@ defmodule Parsely.Application do
       {Phoenix.PubSub, name: Parsely.PubSub},
       # Start Finch
       {Finch, name: Parsely.Finch},
+      # Start the OCR Circuit Breaker
+      {Parsely.OCR.CircuitBreaker, name: Parsely.OCR.CircuitBreaker},
       # Start the Endpoint (http/https)
       ParselyWeb.Endpoint
       # Start a worker by calling: Parsely.Worker.start_link(arg)

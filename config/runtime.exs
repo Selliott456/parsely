@@ -118,4 +118,9 @@ if config_env() == :prod do
 
   # Configure the S3 bucket for business card images
   config :parsely, :s3_bucket, System.get_env("PARSELY_S3_BUCKET")
+
+  # OCR API Configuration
+  config :parsely, :ocr,
+    api_key: System.get_env("OCRSPACE_API_KEY"),
+    endpoint: System.get_env("OCRSPACE_ENDPOINT") || "https://api.ocr.space/parse/image"
 end

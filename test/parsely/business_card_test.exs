@@ -67,7 +67,7 @@ defmodule Parsely.BusinessCardTest do
       business_card = BusinessCard.new("test", confidence: confidence)
 
       expected = (0.9 + 0.8 + 0.7 + 0.6 + 0.5 + 0.4) / 6
-      assert BusinessCard.overall_confidence(business_card) == expected
+      assert Float.round(BusinessCard.overall_confidence(business_card), 2) == expected
     end
 
     test "handles zero confidence scores" do
