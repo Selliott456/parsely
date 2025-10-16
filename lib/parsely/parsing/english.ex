@@ -7,6 +7,7 @@ defmodule Parsely.Parsing.English do
   """
 
   # Email patterns
+  @email ~r/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i
   @email_standard ~r/\b[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}\b/
   @email_with_space ~r/[\w._%+-]+@[\w.-]+\s+[A-Za-z]{2,}/
   @email_multiple_parts ~r/[\w._%+-]+@[\w.-]+\s+[A-Za-z]+\s+[A-Za-z]+/
@@ -54,6 +55,15 @@ defmodule Parsely.Parsing.English do
   @name_title_with_credentials ~r/^[A-Z][a-z]+\.?\s+[A-Z][a-z]+\s+[A-Z][a-z]+,\s*[A-Z]\.?[A-Z]?\.?$/
   @name_dr_md_pattern ~r/^Dr\.\s+[A-Z][a-z]+\s+[A-Z][a-z]+,\s*M\.D\.$/
   @name_title_pattern ~r/^[A-Z][a-z]+\.\s+[A-Z][a-z]+\s+[A-Z][a-z]+$/
+
+  # Additional patterns for scoring-based extraction
+  @name_mixed_case_pattern ~r/^[A-Z][a-z]+(\s+[A-Z]\.?\s*)*[A-Z][a-z]+$/
+  @all_caps_short ~r/^[A-Z\s]+$/
+  @position_pattern ~r/\b[A-Z][A-Za-z\s]+(?:Engineer|Manager|Director|President|CEO|CTO|CFO|VP|Vice President|Senior|Lead|Principal|Architect|Developer|Analyst|Consultant|Specialist|Coordinator|Supervisor|Head|Chief|Executive|Officer)\b/
+  @company_pattern ~r/\b[A-Z][A-Za-z\s&]+(?:Inc|Corp|LLC|Ltd|Co|Company|Corporation|Limited|Group|Associates|Partners|Enterprises|Solutions|Systems|Technologies|Services|Consulting|International|Global|Worldwide)\.?\b/
+
+  # Street keywords for address detection
+  @street_keywords ~r/(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Pl|Place|Way|Circle|Crescent|Terrace|Trail|Parkway|Highway|Freeway)/i
 
   # Address patterns
   @address_zipcode ~r/\b\d{5}(-\d{4})?\b/
@@ -106,13 +116,17 @@ defmodule Parsely.Parsing.English do
   Extracts email addresses and returns {email, confidence} tuple.
   """
   def email(text) do
-    emails = extract_emails(text)
-    email = List.first(emails)
-    confidence = case email do
-      nil -> 0.0
-      e when is_binary(e) -> 0.95  # Very high confidence for valid email format
+    case Regex.run(@email, text) do
+      [raw] ->
+        cleaned =
+          raw
+          |> String.replace(~r/\s+/, "")
+          |> String.replace(~r/(\.c|,)orn\b/i, ".com") # safer than replacing any "corn"
+          |> String.trim()
+
+        if Regex.match?(@email, cleaned), do: {cleaned, 0.98}, else: {nil, 0.0}
+      _ -> {nil, 0.0}
     end
-    {email, confidence}
   end
 
   @doc """
@@ -126,14 +140,52 @@ defmodule Parsely.Parsing.English do
   Extracts phone numbers and returns {phones, confidence} tuple.
   """
   def phones(text) do
-    phones = extract_phones(text)
-    confidence = case phones do
-      [] -> 0.0
-      [_] -> 0.9
-      [_, _] -> 0.8
-      _ -> 0.7  # Many phones might indicate lower confidence
+    case Parsely.Phone.extract_all(text, "US") do
+      [] -> {[], 0.0}
+      list -> {Enum.take(list, 2), min(0.95, 0.6 + 0.15 * length(list))}
     end
-    {phones, confidence}
+  end
+
+  # Helper functions for scoring-based extraction
+  defp top_lines(text, n) do
+    text
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.take(n)
+  end
+
+  defp score_to_conf(score, max) do
+    Float.round(min(1.0, score / max), 2)
+  end
+
+  defp score_name(line) do
+    s = 0
+    s = if Regex.match?(@name_mixed_case_pattern, line), do: s + 12, else: s
+    s = if Regex.match?(@all_caps_short, line), do: s + 6, else: s
+    s = if not String.contains?(String.downcase(line), "www"), do: s + 1, else: s
+    s
+  end
+
+  defp score_position(line) do
+    s = 0
+    s = if Regex.match?(@position_pattern, line), do: s + 10, else: s
+    s = if String.contains?(String.downcase(line), "engineer"), do: s + 5, else: s
+    s = if String.contains?(String.downcase(line), "manager"), do: s + 5, else: s
+    s = if String.contains?(String.downcase(line), "director"), do: s + 5, else: s
+    s = if not String.contains?(String.downcase(line), "www"), do: s + 1, else: s
+    s
+  end
+
+  defp score_company(line) do
+    s = 0
+    s = if Regex.match?(@company_pattern, line), do: s + 10, else: s
+    s = if String.contains?(String.downcase(line), "inc"), do: s + 3, else: s
+    s = if String.contains?(String.downcase(line), "corp"), do: s + 3, else: s
+    s = if String.contains?(String.downcase(line), "llc"), do: s + 3, else: s
+    s = if String.contains?(String.downcase(line), "ltd"), do: s + 3, else: s
+    s = if not String.contains?(String.downcase(line), "www"), do: s + 1, else: s
+    s
   end
 
   @doc """
@@ -153,13 +205,18 @@ defmodule Parsely.Parsing.English do
   Extracts names and returns {name, confidence} tuple.
   """
   def name(text) do
-    names = extract_names(text)
-    name = List.first(names)
-    confidence = case name do
-      nil -> 0.0
-      n when is_binary(n) -> 0.8
+    lines = top_lines(text, 10)
+
+    candidates =
+      lines
+      |> Enum.map(&{score_name(&1), &1})
+      |> Enum.filter(fn {s, _} -> s > 0 end)
+      |> Enum.sort_by(fn {s, _} -> -s end)
+
+    case candidates do
+      [{score, line} | _] -> {line, score_to_conf(score, 20)}
+      _ -> {nil, 0.0}
     end
-    {name, confidence}
   end
 
   @doc """
@@ -179,13 +236,18 @@ defmodule Parsely.Parsing.English do
   Extracts company names and returns {company, confidence} tuple.
   """
   def company(text) do
-    companies = extract_companies(text)
-    company = List.first(companies)
-    confidence = case company do
-      nil -> 0.0
-      c when is_binary(c) -> 0.7
+    lines = top_lines(text, 10)
+
+    candidates =
+      lines
+      |> Enum.map(&{score_company(&1), &1})
+      |> Enum.filter(fn {s, _} -> s > 0 end)
+      |> Enum.sort_by(fn {s, _} -> -s end)
+
+    case candidates do
+      [{score, line} | _] -> {line, score_to_conf(score, 25)}
+      _ -> {nil, 0.0}
     end
-    {company, confidence}
   end
 
   @doc """
@@ -205,13 +267,18 @@ defmodule Parsely.Parsing.English do
   Extracts positions and returns {position, confidence} tuple.
   """
   def position(text) do
-    positions = extract_positions(text)
-    position = List.first(positions)
-    confidence = case position do
-      nil -> 0.0
-      p when is_binary(p) -> 0.7
+    lines = top_lines(text, 10)
+
+    candidates =
+      lines
+      |> Enum.map(&{score_position(&1), &1})
+      |> Enum.filter(fn {s, _} -> s > 0 end)
+      |> Enum.sort_by(fn {s, _} -> -s end)
+
+    case candidates do
+      [{score, line} | _] -> {line, score_to_conf(score, 25)}
+      _ -> {nil, 0.0}
     end
-    {position, confidence}
   end
 
   @doc """
@@ -231,13 +298,65 @@ defmodule Parsely.Parsing.English do
   Extracts addresses and returns {address, confidence} tuple.
   """
   def address(text) do
-    addresses = extract_addresses(text)
-    address = List.first(addresses)
-    confidence = case address do
-      nil -> 0.0
-      a when is_binary(a) -> 0.6
+    lines = top_lines(text, 15)
+
+    # Try to find address components and join adjacent lines
+    candidates = find_address_candidates(lines)
+
+    case candidates do
+      [] -> {nil, 0.0}
+      [{score, address} | _] -> {address, score_to_conf(score, 30)}
     end
-    {address, confidence}
+  end
+
+  defp find_address_candidates(lines) do
+    lines
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {line, idx} ->
+      score = score_address_line(line)
+      if score > 0 do
+        # Try to join with adjacent lines for better address
+        joined = try_join_address_lines(lines, idx)
+        [{score + score_address_line(joined), joined}]
+      else
+        []
+      end
+    end)
+    |> Enum.sort_by(fn {score, _} -> -score end)
+  end
+
+  defp score_address_line(line) do
+    s = 0
+    s = if Regex.match?(@street_keywords, line), do: s + 10, else: s
+    s = if Regex.match?(@address_zipcode, line), do: s + 8, else: s
+    s = if Regex.match?(@address_city_state_zip, line), do: s + 6, else: s
+    s = if String.contains?(String.downcase(line), "suite"), do: s + 3, else: s
+    s = if String.contains?(String.downcase(line), "apt"), do: s + 3, else: s
+    s = if String.contains?(String.downcase(line), "unit"), do: s + 3, else: s
+    s = if String.contains?(String.downcase(line), "floor"), do: s + 2, else: s
+    s = if not String.contains?(String.downcase(line), "www"), do: s + 1, else: s
+    s
+  end
+
+  defp try_join_address_lines(lines, idx) do
+    current_line = Enum.at(lines, idx, "")
+
+    # Try to join with next line if it looks like address continuation
+    next_line = Enum.at(lines, idx + 1, "")
+    if is_address_continuation(next_line) do
+      current_line <> " " <> next_line
+    else
+      current_line
+    end
+  end
+
+  defp is_address_continuation(line) do
+    String.length(line) > 0 and
+    (Regex.match?(@address_zipcode, line) or
+     Regex.match?(@address_city_state_zip, line) or
+     String.contains?(String.downcase(line), "suite") or
+     String.contains?(String.downcase(line), "apt") or
+     String.contains?(String.downcase(line), "unit"))
   end
 
   # Private helper functions
@@ -411,5 +530,70 @@ defmodule Parsely.Parsing.English do
     |> String.replace(@line_break_cleanup, "\n")
     |> String.replace(@carriage_return_cleanup, "\n")
     |> String.trim_trailing()
+  end
+
+  # Debug and test helpers (guarded by Mix.env())
+
+  @doc """
+  Test helper to extract all fields from sample text.
+  Only available in development environment.
+  """
+  def test_with_sample_text(text \\ nil) do
+    Mix.env() == :dev or raise "disabled in prod"
+
+    sample_text = text || """
+    John Doe
+    Software Engineer
+    Example Corp Inc
+    john.doe@example.com
+    +1 (555) 123-4567
+    123 Main Street
+    San Francisco, CA 94105
+    """
+
+    %{
+      email: email(sample_text),
+      phones: phones(sample_text),
+      name: name(sample_text),
+      company: company(sample_text),
+      position: position(sample_text),
+      address: address(sample_text)
+    }
+  end
+
+  @doc """
+  Debug helper to show scoring for each line.
+  Only available in development environment.
+  """
+  def debug_line_scores(text) do
+    Mix.env() == :dev or raise "disabled in prod"
+
+    lines = top_lines(text, 10)
+
+    lines
+    |> Enum.map(fn line ->
+      %{
+        line: line,
+        name_score: score_name(line),
+        position_score: score_position(line),
+        company_score: score_company(line),
+        address_score: score_address_line(line)
+      }
+    end)
+  end
+
+  @doc """
+  Debug helper to show confidence calculations.
+  Only available in development environment.
+  """
+  def debug_confidence_calculation(score, max) do
+    Mix.env() == :dev or raise "disabled in prod"
+
+    %{
+      score: score,
+      max: max,
+      confidence: score_to_conf(score, max),
+      percentage: Float.round(score / max * 100, 1)
+    }
   end
 end
