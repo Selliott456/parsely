@@ -25,25 +25,25 @@ defmodule ParselyWeb.BusinessCardDetailLive do
     <div class="mx-auto max-w-4xl my-8">
       <div class="mb-6">
         <div class="flex justify-between items-center">
-          <h1 class="text-3xl font-bold text-charcoal">
+          <h1 class="text-2xl md:text-3xl font-bold text-charcoal">
             <%= @business_card.name || "Unnamed Contact" %>
           </h1>
 
-          <.button_link_secondary navigate={~p"/business-cards"} class="!bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand">
+          <.button_link_secondary navigate={~p"/business-cards"} class="w-32 sm:w-44 md:w-auto text-center justify-center !bg-brand/10 !hover:bg-brand/20 !text-brand hover:!text-brand">
             ← Cards
           </.button_link_secondary>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg border border-zinc-200 p-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div class="">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 bg-brand/10 rounded-lg p-4">
           <!-- Contact Information -->
-          <div class="md:pr-20 md:border-r md:border-zinc-200">
-            <h2 class="text-xl font-semibold text-charcoal mb-4">Contact Information</h2>
+          <div class="border-b border-zinc-200 pt-6 pb-12 md:pt-0 md:pb-0 md:border-b-0 md:pr-20 md:border-r md:border-zinc-200">
+            <h2 class="text-lg md:text-xl font-semibold text-charcoal mb-4">Contact Information</h2>
             <div class="space-y-4">
               <%= if @business_card.email do %>
                 <div>
-                  <p class="text-lg text-charcoal break-words">
+                  <p class="text-base md:text-lg text-charcoal break-words">
                     <a href={"mailto:#{@business_card.email}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.email %>
                     </a>
@@ -53,7 +53,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
               <%= if @business_card.primary_phone do %>
                 <div>
-                  <p class="text-lg text-charcoal break-words">
+                  <p class="text-base md:text-lg text-charcoal break-words">
                     <a href={"tel:#{@business_card.primary_phone}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.primary_phone %>
                     </a>
@@ -63,7 +63,7 @@ defmodule ParselyWeb.BusinessCardDetailLive do
 
               <%= if @business_card.secondary_phone do %>
                 <div>
-                  <p class="text-lg text-charcoal break-words">
+                  <p class="text-base md:text-lg text-charcoal break-words">
                     <a href={"tel:#{@business_card.secondary_phone}"} class="text-mint-deep hover:text-mint-primary transition-colors">
                       <%= @business_card.secondary_phone %>
                     </a>
@@ -74,24 +74,24 @@ defmodule ParselyWeb.BusinessCardDetailLive do
           </div>
 
           <!-- Professional Information -->
-          <div class="md:pl-8">
-            <h2 class="text-xl font-semibold text-charcoal mb-4">Professional Information</h2>
+          <div class="pt-4 md:pt-0 md:pl-8">
+            <h2 class="text-lg md:text-xl font-semibold text-charcoal mb-4">Professional Information</h2>
             <div class="space-y-4">
               <%= if @business_card.company do %>
                 <div>
-                  <p class="mt-1 text-lg text-charcoal"><%= @business_card.company %></p>
+                  <p class="mt-1 text-base md:text-lg text-charcoal"><%= @business_card.company %></p>
                 </div>
               <% end %>
 
               <%= if @business_card.position do %>
                 <div>
-                  <p class="mt-1 text-lg text-charcoal"><%= @business_card.position %></p>
+                  <p class="mt-1 text-base md:text-lg text-charcoal"><%= @business_card.position %></p>
                 </div>
               <% end %>
 
               <%= if @business_card.address do %>
                 <div class="pt-4 md:border-t border-zinc-200">
-                  <p class="text-lg text-charcoal"><%= @business_card.address %></p>
+                  <p class="text-base md:text-lg text-charcoal"><%= @business_card.address %></p>
                 </div>
               <% end %>
             </div>
@@ -99,10 +99,13 @@ defmodule ParselyWeb.BusinessCardDetailLive do
         </div>
 
         <!-- Notes -->
-        <div class="mt-8 pt-8 border-t border-zinc-200">
+        <div class="mt-8 pt-8">
 
           <%= if @business_card.notes && length(@business_card.notes) > 0 do %>
+            <h2 class="text-lg md:text-xl font-semibold text-charcoal mb-4 md:hidden">NOTES</h2>
+
             <div class="space-y-4 mb-6">
+
               <%= for {note, index} <- Enum.with_index(@business_card.notes) do %>
                 <div class="bg-zinc-50 rounded-lg p-4">
                   <div class="flex justify-between items-start">

@@ -1,73 +1,102 @@
 <!-- Hero Section -->
-<div class="bg-gradient-to-br from-brand/5 to-brand/10 min-h-screen flex items-center">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="text-center">
-      <!-- Logo and Brand -->
-      <div class="flex justify-center mb-8">
-        <img src={~p"/images/pars_leaf_logo.png"} alt="Parsely" class="h-20 w-20 object-cover" />
-      </div>
-
-      <!-- Main Headline -->
-      <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-        Welcome to
-        <span class="text-brand">Parsely</span>
-      </h1>
-
-      <!-- Subtitle -->
-      <p class="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-        The smartest way to scan, organize, and manage your business cards.
-        Turn paper contacts into digital connections instantly.
-      </p>
-
-      <!-- CTA Buttons -->
-      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-        <.link
-          href={~p"/users/register"}
-          class="bg-brand hover:bg-brand/90 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
-        >
-          Get Started Free
-        </.link>
-        <.link
-          href={~p"/users/log_in"}
-          class="border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors duration-200"
-        >
-          Sign In
-        </.link>
-      </div>
-
-      <!-- Features Preview -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-        <div class="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-sm">
-          <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Smart Scanning</h3>
-          <p class="text-gray-600">AI-powered OCR technology extracts contact information with high accuracy</p>
+<div class="bg-gradient-to-br from-brand/5 to-brand/10 min-h-[50vh] flex items-center">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <!-- Left content -->
+      <div class="text-left max-w-2xl mx-auto lg:mx-0">
+        <div class="flex items-center gap-3 mb-6">
+          <img src={~p"/images/pars_leaf_logo.png"} alt="Parsely" class="h-10 w-10 object-cover" />
+          <span class="text-2xl font-semibold text-gray-900">Parsely</span>
         </div>
 
-        <div class="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-sm">
-          <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Organize & Search</h3>
-          <p class="text-gray-600">Keep all your contacts organized and easily searchable in one place</p>
-        </div>
+        <h1 class="text-5xl md:text-6xl font-extrabold text-brand mb-6 leading-tight">
+          Welcome to Parsely
+        </h1>
+        <h2 class="text-xl md:text-2xl font-semibold text-gray-700 mb-4">
+          The smartest way to scan, organize, and manage your business cards.
+        </h2>
+        <h2 class="text-xl md:text-2xl font-semibold text-emerald-500 mb-10">
+          Turn paper contacts into digital connections instantly.
+        </h2>
 
-        <div class="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-sm">
-          <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">Mobile Ready</h3>
-          <p class="text-gray-600">Access your contacts anywhere with our responsive web interface</p>
+        <div class="flex flex-col sm:flex-row gap-4">
+          <.link href={~p"/users/register"} class="bg-brand hover:bg-brand/90 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors duration-200 shadow-lg hover:shadow-xl">
+            Get Started Free
+          </.link>
+          <.link href={~p"/users/log_in"} class="border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors duration-200">
+            Sign In
+          </.link>
         </div>
       </div>
+
+      <!-- Right: stacked business cards visual -->
+      <div class="relative w-full h-[680px] hidden md:block">
+        <!-- Base card style classes applied to each -->
+        <%= for {style, light?, name, title, company, contact} <- [
+          {"top:40%;left:35%;transform:rotate(-8deg);background:linear-gradient(135deg,#7C3AED,#6D28D9);z-index:10;", false, "SARAH CHEN", "Marketing Director", "TECHFLOW SOLUTIONS", "sarah@techflow.com • (555) 123-4567"},
+          {"top:45%;left:42%;transform:rotate(12deg);background:linear-gradient(135deg,#FFFFFF,#F9FAFB);color:#374151;z-index:9;", true, "MICHAEL RODRIGUEZ", "Senior Developer", "INNOVATE LABS", "m.rodriguez@innovate.io • (555) 987-6543"},
+          {"top:35%;left:30%;transform:rotate(-22deg);background:linear-gradient(135deg,#2F2F2F,#111827);z-index:8;", false, "EMMA THOMPSON", "Creative Director", "PIXEL STUDIO", "emma@pixelstudio.com • (555) 456-7890"},
+          {"top:50%;left:38%;transform:rotate(18deg);background:linear-gradient(135deg,#4DBE9F,#059669);z-index:7;", false, "DAVID PARK", "Product Manager", "GREENTECH VENTURES", "d.park@greentech.co • (555) 234-5678"},
+          {"top:42%;left:45%;transform:rotate(-5deg);background:linear-gradient(135deg,#9FE2BF,#4DBE9F);color:#2F2F2F;z-index:6;", true, "LISA WANG", "UX Designer", "DESIGN COLLECTIVE", "lisa@designco.net • (555) 345-6789"},
+          {"top:48%;left:32%;transform:rotate(25deg);background:linear-gradient(135deg,#374151,#2F2F2F);z-index:5;", false, "JAMES MILLER", "Sales Executive", "GLOBAL DYNAMICS", "j.miller@globaldyn.com • (555) 567-8901"},
+          {"top:38%;left:48%;transform:rotate(-15deg);background:linear-gradient(135deg,#7C3AED,#8B5CF6);z-index:4;", false, "PRIYA PATEL", "Data Scientist", "ANALYTICS PRO", "priya@analyticspro.ai • (555) 678-9012"},
+          {"top:52%;left:40%;transform:rotate(8deg);background:linear-gradient(135deg,#FFFFFF,#E5E7EB);color:#374151;z-index:3;", true, "ALEX JOHNSON", "Consultant", "STRATEGY PARTNERS", "alex@strategyp.com • (555) 789-0123"},
+          {"top:33%;left:40%;transform:rotate(-28deg);background:linear-gradient(135deg,#B7F5D8,#9FE2BF);color:#2F2F2F;z-index:2;", true, "MARIA GARCIA", "Operations Manager", "LOGISTICS PLUS", "maria@logisticsplus.org • (555) 890-1234"},
+          {"top:46%;left:50%;transform:rotate(15deg);background:linear-gradient(135deg,#111827,#374151);z-index:1;", false, "ROBERT KIM", "Financial Advisor", "WEALTH MANAGEMENT", "robert@wealthmgmt.biz • (555) 901-2345"}
+        ] do %>
+          <div class={"absolute rounded-md shadow-2xl p-3 flex flex-col justify-between transition-transform duration-300 hover:-translate-y-2 hover:scale-[1.02]"}
+               style={"width:210px;height:132px;" <> style}>
+            <div>
+              <div class={"font-bold mb-1" <> if(light?, do: " text-gray-800 text-[9px]", else: " text-white text-[9px]")}><%= name %></div>
+              <div class={if(light?, do: "text-gray-700 text-[7px] opacity-90", else: "text-white text-[7px] opacity-90")}>
+                <%= title %>
+              </div>
+            </div>
+            <div>
+              <div class={"font-bold mb-1" <> if(light?, do: " text-gray-800 text-[8px]", else: " text-white text-[8px]")}><%= company %></div>
+              <div class={if(light?, do: "text-gray-700 text-[6px] opacity-80", else: "text-white text-[6px] opacity-80")}>
+                <%= contact %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Product Info Boxes (kept as before) -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+    <div class="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+      <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2 text-center">Smart Scanning</h3>
+      <p class="text-gray-600 text-center">AI-powered OCR technology extracts contact information with high accuracy</p>
+    </div>
+
+    <div class="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+      <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2 text-center">Organize & Search</h3>
+      <p class="text-gray-600 text-center">Keep all your contacts organized and easily searchable in one place</p>
+    </div>
+
+    <div class="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+      <div class="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2 text-center">Mobile Ready</h3>
+      <p class="text-gray-600 text-center">Access your contacts anywhere with our responsive web interface</p>
     </div>
   </div>
 </div>
