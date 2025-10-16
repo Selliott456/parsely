@@ -103,26 +103,10 @@ defmodule Parsely.Parsing.English do
   end
 
   @doc """
-  Extracts phone numbers from text using precompiled patterns.
+  Extracts phone numbers from text using libphonenumber.
   """
   def extract_phones(text) do
-    text
-    |> extract_with_patterns([
-      @phone_us_standard,
-      @phone_international,
-      @phone_japanese_corrupted,
-      @phone_corrupted_separators,
-      @phone_japanese_heavy,
-      @phone_japanese_single,
-      @phone_digits_only,
-      @phone_formatted,
-      @phone_tel_prefix,
-      @phone_fax_prefix,
-      @phone_mobile_prefix
-    ])
-    |> Enum.map(&clean_phone/1)
-    |> Enum.filter(&valid_phone?/1)
-    |> Enum.uniq()
+    Parsely.Phone.extract_all(text)
   end
 
   @doc """
@@ -197,17 +181,6 @@ defmodule Parsely.Parsing.English do
     Regex.match?(@email_validation, email)
   end
 
-  defp clean_phone(phone) do
-    phone
-    |> String.replace(@phone_cleanup_chars, "")
-    |> String.replace(@phone_cleanup_spaces, " ")
-    |> String.trim()
-  end
-
-  defp valid_phone?(phone) do
-    digits_only = String.replace(phone, @phone_digits_extract, "")
-    String.length(digits_only) >= 10
-  end
 
   defp is_name_line?(line) do
     cond do

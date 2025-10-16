@@ -70,18 +70,20 @@ defmodule Parsely.Parsing.BusinessCardParser do
 
     # Extract all fields using precompiled regexes
     emails = Parsely.Parsing.English.extract_emails(clean_text)
-    phones = Parsely.Parsing.English.extract_phones(clean_text)
     names = Parsely.Parsing.English.extract_names(clean_text)
     companies = Parsely.Parsing.English.extract_companies(clean_text)
     positions = Parsely.Parsing.English.extract_positions(clean_text)
     addresses = Parsely.Parsing.English.extract_addresses(clean_text)
 
+    # Extract phone numbers using libphonenumber (at most 2)
+    {primary_phone, secondary_phone} = Parsely.Phone.extract_primary_and_secondary(clean_text)
+
     # Build result map
     result = %{
       name: List.first(names),
       email: List.first(emails),
-      primary_phone: List.first(phones),
-      secondary_phone: Enum.at(phones, 1),
+      primary_phone: primary_phone,
+      secondary_phone: secondary_phone,
       company: List.first(companies),
       position: List.first(positions),
       address: List.first(addresses),
@@ -171,13 +173,12 @@ defmodule Parsely.Parsing.BusinessCardParser do
 
   defp calculate_single_phone_confidence(phone) when is_binary(phone) do
     cond do
-      # High confidence: properly formatted phone numbers
-      Regex.match?(@phone_formatted_pattern, phone) -> 0.9
-      Regex.match?(@phone_international_pattern, phone) -> 0.9
-      # Medium confidence: has enough digits
-      Regex.match?(@phone_digits_pattern, phone) -> 0.7
-      # Lower confidence: shorter numbers
-      true -> 0.4
+      # High confidence: valid phone number using libphonenumber
+      Parsely.Phone.valid?(phone) -> 0.95
+      # Medium confidence: looks like a phone number but not valid
+      Regex.match?(@phone_digits_pattern, phone) -> 0.6
+      # Lower confidence: doesn't look like a phone number
+      true -> 0.2
     end
   end
 

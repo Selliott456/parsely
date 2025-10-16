@@ -33,8 +33,8 @@ defmodule Parsely.Parsing.EnglishTest do
       text = "Call us at (555) 123-4567 or 555-987-6543"
       phones = English.extract_phones(text)
 
-      assert "(555) 123-4567" in phones
-      assert "555-987-6543" in phones
+      assert "+1 555 123 4567" in phones
+      assert "+1 555 987 6543" in phones
     end
 
     test "extracts international phone numbers" do
@@ -48,8 +48,8 @@ defmodule Parsely.Parsing.EnglishTest do
       text = "Tel: (555) 123-4567 Fax: (555) 987-6543"
       phones = English.extract_phones(text)
 
-      assert "(555) 123-4567" in phones
-      assert "(555) 987-6543" in phones
+      assert "+1 555 123 4567" in phones
+      assert "+1 555 987 6543" in phones
     end
   end
 

@@ -56,7 +56,8 @@ defmodule Parsely.MixProject do
       {:nimble_totp, "~> 1.0"},
       {:ex_aws_s3, "~> 2.5"},
       {:httpoison, "~> 2.0"},
-      {:req, "~> 0.4"}
+      {:req, "~> 0.4"},
+      {:ex_phone_number, "~> 0.4"}
     ]
   end
 
