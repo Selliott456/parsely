@@ -7,6 +7,9 @@ defmodule Parsely.Application do
 
   @impl true
   def start(_type, _args) do
+    # Attach telemetry handlers for observability
+    Parsely.Telemetry.attach_handlers()
+
     children = [
       # Start the Telemetry supervisor
       ParselyWeb.Telemetry,

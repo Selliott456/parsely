@@ -40,25 +40,41 @@ defmodule Parsely.Parsing.BusinessCardParser do
       Task.async_stream(tasks, fn {k, fun} -> {k, fun.()} end, timeout: 2_000)
       |> Enum.into(%{}, fn {:ok, {k, {val, conf}}} -> {k, {val, conf}} end)
 
-    {:ok,
-     %BusinessCard{
-       raw_text: clean,
-       language: lang,
-       email: get_val(results, :email),
-       phones: get_val(results, :phones) || [],
-       position: get_val(results, :position),
-       name: get_val(results, :name),
-       company: get_val(results, :company),
-       address: get_val(results, :address),
-       confidence: %{
-         email: get_conf(results, :email),
-         phones: get_conf(results, :phones),
-         position: get_conf(results, :position),
-         name: get_conf(results, :name),
-         company: get_conf(results, :company),
-         address: get_conf(results, :address)
-       }
-     }}
+    business_card = %BusinessCard{
+      raw_text: clean,
+      language: lang,
+      email: get_val(results, :email),
+      phones: get_val(results, :phones) || [],
+      position: get_val(results, :position),
+      name: get_val(results, :name),
+      company: get_val(results, :company),
+      address: get_val(results, :address),
+      confidence: %{
+        email: get_conf(results, :email),
+        phones: get_conf(results, :phones),
+        position: get_conf(results, :position),
+        name: get_conf(results, :name),
+        company: get_conf(results, :company),
+        address: get_conf(results, :address)
+      }
+    }
+
+    # Emit telemetry event for confidence scores
+    :telemetry.execute(
+      [:parsely, :card, :confidence],
+      %{
+        name: get_conf(results, :name),
+        email: get_conf(results, :email),
+        phones: get_conf(results, :phones),
+        position: get_conf(results, :position),
+        company: get_conf(results, :company),
+        address: get_conf(results, :address),
+        overall: BusinessCard.overall_confidence(business_card)
+      },
+      %{language: lang, parser: parser}
+    )
+
+    {:ok, business_card}
   end
 
   defp clean(t) do

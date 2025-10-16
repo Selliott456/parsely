@@ -73,7 +73,9 @@ defmodule Parsely.OCR.SpaceClient do
         backoff_max: Keyword.get(config, :retry_backoff_max, 5_000)
       )
 
-    with {:ok, %Req.Response{status: 200, body: response_body}} <- Req.post(req, body: body),
+    start_time = System.monotonic_time(:millisecond)
+
+    result = with {:ok, %Req.Response{status: 200, body: response_body}} <- Req.post(req, body: body),
          {:ok, %{"ParsedResults" => [%{"ParsedText" => text} | _], "IsErroredOnProcessing" => false} = json} <- Jason.decode(response_body) do
       meta = Map.take(json, ~w(OCRExitCode ProcessingTimeInMilliseconds)a)
       {:ok, text, meta}
@@ -91,6 +93,16 @@ defmodule Parsely.OCR.SpaceClient do
       {:error, decode_err} ->
         {:error, {:decode_error, decode_err}}
     end
+
+    # Emit telemetry event for OCR latency
+    duration_ms = System.monotonic_time(:millisecond) - start_time
+    :telemetry.execute(
+      [:parsely, :ocr, :parse],
+      %{duration_ms: duration_ms},
+      %{engine: "ocr.space", language: normalize_lang(lang), success: match?({:ok, _, _}, result)}
+    )
+
+    result
   end
 
   @doc """

@@ -27,6 +27,8 @@ defmodule Parsely.OCR.TesseractClient do
     lang = opts[:language] || "eng"
     filetype = opts[:filetype] || "jpg"
 
+    start_time = System.monotonic_time(:millisecond)
+
     try do
       # Create temporary file
       temp_file = create_temp_file(base64, filetype)
@@ -37,20 +39,45 @@ defmodule Parsely.OCR.TesseractClient do
       # Clean up temp file
       File.rm(temp_file)
 
+      duration_ms = System.monotonic_time(:millisecond) - start_time
+
       case result do
         {:ok, text} ->
           meta = %{
             engine: "tesseract",
             language: normalize_lang(lang),
-            processing_time_ms: 0  # Tesseract doesn't provide timing info
+            processing_time_ms: duration_ms
           }
+
+          # Emit telemetry event for OCR latency
+          :telemetry.execute(
+            [:parsely, :ocr, :parse],
+            %{duration_ms: duration_ms},
+            %{engine: "tesseract", language: normalize_lang(lang), success: true}
+          )
+
           {:ok, text, meta}
         {:error, reason} ->
+          # Emit telemetry event for failed OCR
+          :telemetry.execute(
+            [:parsely, :ocr, :parse],
+            %{duration_ms: duration_ms},
+            %{engine: "tesseract", language: normalize_lang(lang), success: false}
+          )
           {:error, reason}
       end
     rescue
       error ->
+        duration_ms = System.monotonic_time(:millisecond) - start_time
         Logger.error("Tesseract OCR failed: #{inspect(error)}")
+
+        # Emit telemetry event for failed OCR
+        :telemetry.execute(
+          [:parsely, :ocr, :parse],
+          %{duration_ms: duration_ms},
+          %{engine: "tesseract", language: normalize_lang(lang), success: false}
+        )
+
         {:error, {:tesseract_error, error}}
     end
   end
