@@ -7,53 +7,23 @@ defmodule Parsely.JapaneseOCRService do
   Parses Japanese business card text using the same logic as English parsing.
   """
   def parse_business_card_text(text) do
-    IO.puts("=== JAPANESE OCR SERVICE: Parsing business card text ===")
-
     # Split into lines and normalize (same as English)
-    lines = text
+    _lines = text
       |> String.split("\n")
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
 
-    IO.puts("Japanese text lines:")
-    Enum.with_index(lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Line #{index}: '#{line}'")
-    end)
-
     # Step 1: Extract email and phone (easily identified)
-    IO.puts("=== STEP 1: EXTRACTING EMAIL AND PHONE ===")
     email = find_email_japanese(text)
     phone = Parsely.OCRService.find_phone(text)  # Reuse English phone function since numbers are universal
 
-    # Safely print extracted values
-    safe_email = if email do
-      email
-      |> :unicode.characters_to_binary(:utf8, :latin1)
-      |> String.replace(~r/[^\x20-\x7E]/, "?")
-    else
-      "nil"
-    end
-    safe_phone = if phone do
-      phone
-      |> :unicode.characters_to_binary(:utf8, :latin1)
-      |> String.replace(~r/[^\x20-\x7E]/, "?")
-    else
-      "nil"
-    end
-    IO.puts("Extracted email: #{safe_email}")
-    IO.puts("Extracted phone: #{safe_phone}")
-
     # Step 2: Extract position based on scoring (Japanese version)
-    IO.puts("=== STEP 2: EXTRACTING POSITION ===")
     position = find_position_by_scoring(text, email, phone)
 
     # Step 3: Extract name based on format (capitalization) (Japanese version)
-    IO.puts("=== STEP 3: EXTRACTING NAME BY FORMAT ===")
     name = find_name_by_format(text, email, phone, position)
 
     # Step 4: Extract company using keywords and remaining lines (Japanese version)
-    IO.puts("=== STEP 4: EXTRACTING COMPANY BY KEYWORDS ===")
     company = find_company_by_keywords(text, email, phone, position, name)
 
     result = %{
@@ -65,19 +35,10 @@ defmodule Parsely.JapaneseOCRService do
       raw_text: text
     }
 
-    IO.puts("Japanese parsing results:")
-    IO.puts("  Name: #{name}")
-    IO.puts("  Company: #{company}")
-    IO.puts("  Position: #{position}")
-    IO.puts("  Email: #{email} (from universal function)")
-    IO.puts("  Phone: #{phone} (from universal function)")
-
     {:ok, result}
   end
 
   defp find_email_japanese(text) do
-    IO.puts("=== FINDING JAPANESE EMAIL ===")
-
     try do
       # First, try to find any line with @ symbol (most aggressive approach)
       lines_with_at = text
@@ -85,11 +46,8 @@ defmodule Parsely.JapaneseOCRService do
       |> Enum.map(&String.trim/1)
       |> Enum.filter(&String.contains?(&1, "@"))
 
-      IO.puts("Lines containing @ symbol: #{inspect(lines_with_at)}")
-
       # Try to extract email from lines with @
       potential_email = Enum.find_value(lines_with_at, fn line ->
-        IO.puts("Processing line with @: '#{line}'")
         # Clean up the line and try to extract email
         cleaned_line = line
         |> String.replace(~r/\s+/, "")  # Remove all whitespace
@@ -128,22 +86,17 @@ defmodule Parsely.JapaneseOCRService do
         |> String.replace("区", "u")  # Japanese kanji corruption (区 -> u)
         |> String.replace(~r/[^\w@.-]/, "") # Remove any remaining non-alphanumeric chars except @, ., -
 
-        IO.puts("Cleaned line: '#{cleaned_line}'")
-
         # Try to match standard email pattern on cleaned line
         case Regex.run(~r/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/, cleaned_line) do
           [email | _] ->
-            IO.puts("Found email after cleaning: '#{email}'")
             email
           nil ->
-            IO.puts("No valid email pattern found in cleaned line")
             nil
         end
       end)
 
       # If we found an email from @ lines, return it
       if potential_email do
-        IO.puts("Extracted email from @ line: '#{potential_email}'")
         potential_email
       else
         # Fallback to original patterns
@@ -198,41 +151,27 @@ defmodule Parsely.JapaneseOCRService do
 
             # Validate that it still looks like an email after cleaning
             if String.contains?(cleaned_email, "@") and String.contains?(cleaned_email, ".") do
-              # Safely print email by converting to binary and replacing non-printable chars
-              safe_email = cleaned_email
-              |> :unicode.characters_to_binary(:utf8, :latin1)
-              |> String.replace(~r/[^\x20-\x7E]/, "?")
-              IO.puts("Found email: #{safe_email}")
               cleaned_email
             else
               nil
             end
           nil -> nil
         end
-        end) || (IO.puts("No email found"); nil)
+        end) || nil
       end
     rescue
-      error ->
-        IO.puts("Error in email extraction: #{inspect(error)}")
+      _error ->
         nil
     end
   end
 
   defp find_position_by_scoring(text, _email, _phone) do
-    IO.puts("=== FINDING JAPANESE POSITION BY SCORING ===")
-
     # Split into lines and normalize
     lines =
       text
       |> String.split("\n")
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
-
-    IO.puts("All lines for position analysis:")
-    Enum.with_index(lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Line #{index}: '#{line}'")
-    end)
 
     # Common job titles/positions (Japanese equivalents)
     position_keywords = [
@@ -287,16 +226,9 @@ defmodule Parsely.JapaneseOCRService do
     end
 
     # Filter out obvious non-position lines (mirror English exactly)
-    IO.puts("Filtering out email, phone, and non-letter lines...")
     filtered_lines = lines
     |> Enum.reject(fn line ->
       is_email_line?.(line) or is_phone_line?.(line) or not has_letters?.(line) or is_urlish?.(line)
-    end)
-
-    IO.puts("Remaining lines after filtering:")
-    Enum.with_index(filtered_lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Filtered line #{index}: '#{line}'")
     end)
 
     # Score each line as a position candidate (mirror English exactly)
@@ -308,9 +240,6 @@ defmodule Parsely.JapaneseOCRService do
         looks_like_title = Regex.match?(~r/^[A-Z\p{Hiragana}\p{Katakana}\p{Han}][A-Za-z\p{Hiragana}\p{Katakana}\p{Han}\s&.-]{2,40}$/u, line) and
                             length(String.split(line, ~r/\s+/, trim: true)) in 1..3
 
-        IO.puts("  Analyzing line: '#{line}'")
-        IO.puts("    Contains keywords: #{contains_keywords}")
-        IO.puts("    Looks like title: #{looks_like_title}")
 
         score = 0
         score = if contains_keywords, do: score + 5, else: score
@@ -322,37 +251,21 @@ defmodule Parsely.JapaneseOCRService do
       |> Enum.sort_by(fn {score, _line} -> -score end)
       |> Enum.map(fn {_score, line} -> line end)
 
-    IO.puts("Position candidates (sorted by score):")
-    Enum.with_index(position_candidates, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Candidate #{index}: '#{line}'")
-    end)
-
     case position_candidates do
       [position | _] ->
-        IO.puts("Selected position: '#{position}'")
         String.trim(position)
       _ ->
-        IO.puts("No position found")
         nil
     end
   end
 
   defp find_name_by_format(text, _email, _phone, position) do
-    IO.puts("=== FINDING JAPANESE NAME BY FORMAT ===")
-
     # Split into lines and normalize
     lines =
       text
       |> String.split("\n")
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
-
-    IO.puts("All lines for name analysis:")
-    Enum.with_index(lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Line #{index}: '#{line}'")
-    end)
 
     # Helper predicates (mirror English exactly)
     has_letters? = fn line -> Regex.match?(~r/[A-Za-z\p{Hiragana}\p{Katakana}\p{Han}]/u, line) end
@@ -365,17 +278,10 @@ defmodule Parsely.JapaneseOCRService do
     end
 
     # Filter out obvious non-name lines (mirror English exactly)
-    IO.puts("Filtering out email, phone, position, and non-letter lines...")
     filtered_lines = lines
     |> Enum.reject(fn line ->
       is_email_line?.(line) or is_phone_line?.(line) or is_position_line?.(line) or
       not has_letters?.(line) or is_urlish?.(line)
-    end)
-
-    IO.puts("Remaining lines after filtering:")
-    Enum.with_index(filtered_lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Filtered line #{index}: '#{line}'")
     end)
 
     # Mirror English logic exactly - use the same sophisticated scoring system
@@ -433,12 +339,6 @@ defmodule Parsely.JapaneseOCRService do
         base = if contains_url?.(line), do: base - 5, else: base
         base = if looks_like_address?.(line), do: base - 4, else: base
 
-        IO.puts("  Analyzing line: '#{line}' (index: #{idx})")
-        IO.puts("    Is person name pattern: #{is_person_name_pattern?.(line)}")
-        IO.puts("    Has digits: #{has_digits?.(line)}")
-        IO.puts("    Contains URL: #{contains_url?.(line)}")
-        IO.puts("    Looks like address: #{looks_like_address?.(line)}")
-        IO.puts("    Final score: #{base}")
 
         {base, line, idx}
       end)
@@ -446,37 +346,21 @@ defmodule Parsely.JapaneseOCRService do
       |> Enum.sort_by(fn {score, _line, _idx} -> -score end)
       |> Enum.map(fn {_score, line, _idx} -> line end)
 
-    IO.puts("Name candidates found: #{length(name_candidates)}")
-    Enum.with_index(name_candidates, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Candidate #{index}: '#{line}'")
-    end)
-
     case name_candidates do
       [name | _] ->
-        IO.puts("Found name: '#{name}'")
         String.trim(name)
       _ ->
-              IO.puts("No name found")
-              nil
+        nil
     end
   end
 
   defp find_company_by_keywords(text, _email, _phone, position, name) do
-    IO.puts("=== FINDING JAPANESE COMPANY BY KEYWORDS ===")
-
     # Split into lines and normalize
     lines =
       text
       |> String.split("\n")
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
-
-    IO.puts("All lines for company analysis:")
-    Enum.with_index(lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Line #{index}: '#{line}'")
-    end)
 
     # Company keywords (Japanese equivalents)
     company_keywords = [
@@ -513,17 +397,10 @@ defmodule Parsely.JapaneseOCRService do
     end
 
     # Filter out obvious non-company lines (mirror English exactly)
-    IO.puts("Filtering out email, phone, position, name, and non-letter lines...")
     filtered_lines = lines
     |> Enum.reject(fn line ->
       is_email_line?.(line) or is_phone_line?.(line) or is_position_line?.(line) or
       is_name_line?.(line) or not has_letters?.(line) or is_urlish?.(line)
-    end)
-
-    IO.puts("Remaining lines after filtering:")
-    Enum.with_index(filtered_lines, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Filtered line #{index}: '#{line}'")
     end)
 
     # Score each line as a company candidate (mirror English exactly)
@@ -535,9 +412,6 @@ defmodule Parsely.JapaneseOCRService do
         looks_like_company = Regex.match?(~r/^[A-Z\p{Hiragana}\p{Katakana}\p{Han}][A-Za-z\p{Hiragana}\p{Katakana}\p{Han}\s&.-]{2,50}$/u, line) and
                             length(String.split(line, ~r/\s+/, trim: true)) in 1..5
 
-        IO.puts("  Analyzing line: '#{line}'")
-        IO.puts("    Contains keywords: #{contains_keywords}")
-        IO.puts("    Looks like company: #{looks_like_company}")
 
         score = 0
         score = if contains_keywords, do: score + 5, else: score
@@ -549,18 +423,10 @@ defmodule Parsely.JapaneseOCRService do
       |> Enum.sort_by(fn {score, _line} -> -score end)
       |> Enum.map(fn {_score, line} -> line end)
 
-    IO.puts("Company candidates (sorted by score):")
-    Enum.with_index(company_candidates, 1)
-    |> Enum.each(fn {line, index} ->
-      IO.puts("  Candidate #{index}: '#{line}'")
-    end)
-
     case company_candidates do
       [company | _] ->
-        IO.puts("Selected company: '#{company}'")
         String.trim(company)
       _ ->
-        IO.puts("No company found")
         nil
     end
   end

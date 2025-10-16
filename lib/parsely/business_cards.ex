@@ -116,16 +116,11 @@ defmodule Parsely.BusinessCards do
   def duplicate_exists?(user_id, email) when is_binary(email) do
     normalized_email = email |> String.trim() |> String.downcase()
 
-    IO.puts("=== EMAIL DUPLICATE CHECK ===")
-    IO.puts("User ID: #{user_id}")
-    IO.puts("Normalized email: #{normalized_email}")
-
     result = BusinessCard
     |> where([bc], bc.user_id == ^user_id)
     |> where([bc], fragment("lower(?)", bc.email) == ^normalized_email)
     |> Repo.exists?()
 
-    IO.puts("Email duplicate result: #{result}")
     result
   end
 
@@ -165,16 +160,11 @@ defmodule Parsely.BusinessCards do
       value when is_binary(value) ->
         trimmed = String.trim(value)
         if trimmed != "" and String.contains?(trimmed, "@") do
-          IO.puts("=== SIMPLE EMAIL DUPLICATE CHECK ===")
-          IO.puts("User ID: #{user_id}")
-          IO.puts("Email: #{trimmed}")
-
           result = BusinessCard
           |> where([bc], bc.user_id == ^user_id)
           |> where([bc], bc.email == ^trimmed)
           |> Repo.exists?()
 
-          IO.puts("Duplicate result: #{result}")
           result
         else
           false

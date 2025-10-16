@@ -33,23 +33,11 @@ defmodule ParselyWeb.ScanCardLive do
 
 
   def handle_info({:process_ocr, photo_data}, socket) do
-    IO.puts("=== PROCESSING OCR ===")
-    IO.puts("Current socket assigns: #{inspect(socket.assigns)}")
-
     # Process OCR asynchronously
     case ImageService.upload_image(photo_data, "business_card.jpg") do
       {:ok, image_url} ->
-        IO.puts("Image saved successfully: #{image_url}")
-
         # Then process the image with OCR
         {:ok, ocr_results} = OCRService.extract_business_card_info(photo_data, socket.assigns.ocr_language)
-
-        # Debug: Show ALL OCR data gathered from photo
-        IO.puts("=" |> String.duplicate(80))
-        IO.puts("🔍 COMPLETE OCR DATA FROM PHOTO:")
-        IO.puts("=" |> String.duplicate(80))
-        IO.inspect(ocr_results, label: "📄 Raw OCR Results", pretty: true, width: 120)
-        IO.puts("=" |> String.duplicate(80))
 
         # Add the image URL to the OCR results
         ocr_results = Map.put(ocr_results, :image_url, image_url)
@@ -64,19 +52,11 @@ defmodule ParselyWeb.ScanCardLive do
           |> BusinessCards.change_business_card(ocr_results)
           |> Map.put(:action, :validate)
 
-        IO.puts("Form populated with OCR results: #{inspect(changeset.changes)}")
-        IO.puts("Form data: #{inspect(changeset.data)}")
-
         updated_socket = assign(socket, :form, to_form(changeset))
-        IO.puts("Updated socket assigns: #{inspect(updated_socket.assigns)}")
-        IO.puts("Form field values: name=#{updated_socket.assigns.form[:name].value}, email=#{updated_socket.assigns.form[:email].value}")
-        IO.puts("Form field values: phone=#{updated_socket.assigns.form[:phone].value}, company=#{updated_socket.assigns.form[:company].value}, position=#{updated_socket.assigns.form[:position].value}")
-        IO.puts("Form field values: address=#{updated_socket.assigns.form[:address].value}")
 
         {:noreply, assign(updated_socket, :processing_ocr, false)}
 
       {:error, reason} ->
-        IO.puts("Failed to save image: #{reason}")
         {:noreply,
          socket
          |> put_flash(:error, "Failed to save image: #{reason}")}
@@ -84,16 +64,12 @@ defmodule ParselyWeb.ScanCardLive do
   end
 
   def handle_event("photo-captured", %{"data" => photo_data}, socket) do
-    IO.puts("photo-captured event: starting image save + OCR")
-
     # Hide camera, add photo data, and show loading state immediately
     socket =
       socket
       |> assign(:photo_data, photo_data)
       |> assign(:show_camera, false)
       |> assign(:processing_ocr, true)
-
-    IO.puts("UI state: show_camera=#{socket.assigns.show_camera}, photo_data=#{if socket.assigns.photo_data, do: "present", else: "nil"}, processing_ocr=#{socket.assigns.processing_ocr}")
 
     # Process OCR immediately (not with delay)
     Process.send(self(), {:process_ocr, photo_data}, [])
@@ -251,10 +227,6 @@ defmodule ParselyWeb.ScanCardLive do
   end
 
   def render(assigns) do
-    IO.puts("=== RENDERING SCAN CARD ===")
-    IO.puts("show_camera: #{assigns.show_camera}")
-    IO.puts("photo_data: #{if assigns.photo_data, do: "present", else: "nil"}")
-    IO.puts("form: #{if assigns.form, do: "present", else: "nil"}")
 
     ~H"""
     <div id="scan-card" class="mx-auto max-w-4xl pb-16 min-h-screen" phx-hook="CameraCapture">
