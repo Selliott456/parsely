@@ -235,7 +235,7 @@ defmodule ParselyWeb.ScanCardLive do
 
       <%= if @show_camera do %>
         <!-- Camera Capture Interface -->
-        <div class="bg-white rounded-lg border border-zinc-200 p-6 my-8">
+        <div class="bg-brand/10 rounded-lg border border-zinc-200 p-6 my-8">
           <div class="text-center">
             <div id="camera-container" phx-update="ignore" class="mx-auto h-64 w-full bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
               <div class="text-center">
@@ -354,7 +354,7 @@ defmodule ParselyWeb.ScanCardLive do
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" phx-click="close-assign-modal">
           <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" phx-click-away="close-assign-modal">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Assign OCR Text</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Selected text:</h3>
               <button
                 type="button"
                 phx-click="close-assign-modal"
@@ -365,24 +365,22 @@ defmodule ParselyWeb.ScanCardLive do
             </div>
 
             <div class="mb-4">
-              <p class="text-sm text-gray-600 mb-2">Selected text:</p>
-              <div class="bg-gray-100 p-3 rounded-md font-mono text-sm">
+              <div class="bg-brand/10 p-3 rounded-md font-mono text-sm">
                 "<%= @selected_ocr_text %>"
               </div>
             </div>
 
             <div class="space-y-2">
-              <p class="text-sm font-medium text-gray-700">Assign to field:</p>
-              <div class="grid grid-cols-1 gap-2">
+              <p class="text-lg font-semibold text-gray-900">Assign to:</p>
+              <div class="flex flex-col items-center gap-2">
                 <%= unless MapSet.member?(@assigned_fields, "name") do %>
                   <button
                     type="button"
                     phx-click="assign-to-field"
                     phx-value-field="name"
-                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                    class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                   >
                     <div class="font-medium text-gray-900">Name</div>
-                    <div class="text-sm text-gray-500">Person's full name</div>
                   </button>
                 <% end %>
 
@@ -391,10 +389,9 @@ defmodule ParselyWeb.ScanCardLive do
                     type="button"
                     phx-click="assign-to-field"
                     phx-value-field="email"
-                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                    class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                   >
                     <div class="font-medium text-gray-900">Email</div>
-                    <div class="text-sm text-gray-500">Email address</div>
                   </button>
                 <% end %>
 
@@ -403,10 +400,9 @@ defmodule ParselyWeb.ScanCardLive do
                     type="button"
                     phx-click="assign-to-field"
                     phx-value-field="phone"
-                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                    class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                   >
                     <div class="font-medium text-gray-900">Phone</div>
-                    <div class="text-sm text-gray-500">Phone number</div>
                   </button>
                 <% end %>
 
@@ -415,10 +411,9 @@ defmodule ParselyWeb.ScanCardLive do
                     type="button"
                     phx-click="assign-to-field"
                     phx-value-field="company"
-                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                    class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                   >
                     <div class="font-medium text-gray-900">Company</div>
-                    <div class="text-sm text-gray-500">Company or organization name</div>
                   </button>
                 <% end %>
 
@@ -427,10 +422,20 @@ defmodule ParselyWeb.ScanCardLive do
                     type="button"
                     phx-click="assign-to-field"
                     phx-value-field="position"
-                    class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                    class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                   >
                     <div class="font-medium text-gray-900">Position</div>
-                    <div class="text-sm text-gray-500">Job title or position</div>
+                  </button>
+                <% end %>
+
+                <%= unless MapSet.member?(@assigned_fields, "address") do %>
+                  <button
+                    type="button"
+                    phx-click="assign-to-field"
+                    phx-value-field="address"
+                    class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  >
+                    <div class="font-medium text-gray-900">Address</div>
                   </button>
                 <% end %>
 
@@ -439,10 +444,9 @@ defmodule ParselyWeb.ScanCardLive do
                   type="button"
                   phx-click="assign-to-field"
                   phx-value-field="notes"
-                  class="w-full text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
+                  class="w-3/5 text-left px-4 py-3 bg-mint-primary/10 border border-gray-300 rounded-md hover:bg-mint-primary/20 transition-colors"
                 >
                   <div class="font-medium text-gray-900">Add to Notes</div>
-                  <div class="text-sm text-gray-500">Add this text to the notes field</div>
                 </button>
               </div>
             </div>
@@ -451,7 +455,7 @@ defmodule ParselyWeb.ScanCardLive do
               <button
                 type="button"
                 phx-click="close-assign-modal"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                class="px-4 py-2 text-sm font-medium text-white bg-brand hover:bg-brand/90 rounded-md"
               >
                 Cancel
               </button>
